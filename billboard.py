@@ -56,12 +56,13 @@ def read() -> Billboard:
     # NOTA LAIA:
     # Perque et facis la idea, tal com diu l'enunciat, i ha els containers aquests
     # de nom item_resa que contenen dos diccionaris de nom data movie i data_theater.
-    # Estan com a dins d'un contaienr per aixo accediexo al j_w aquest random.
+    # Estan com a dins d'un container (div d'html) per aixo accediexo al j_w aquest random.
     # També hi ha una unordered list que conté tots els horaris però com que tot
     # el accedim ho fem com en format string, he hagut de fer un codi poxo
     # per passar les llistes de numeros en str a nombres normals.
     # Com que els altres son diccionaris, hi ha el json aquest sexy que ens ho
     # fa directament.
+    # Per veuere-ho bé, inspecciona la pagina i ja està
 
     billboard: Billboard = Billboard(list(), list(), list())
 
