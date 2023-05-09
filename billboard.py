@@ -51,7 +51,7 @@ class Billboard:
 
 def read() -> Billboard:
     """Scrapes the data from sensacine.com web of
-    the movies and theaters of Barcelona."""
+    the movies and theaters of Barcelona    """
 
     # NOTA LAIA:
     # Perque et facis la idea, tal com diu l'enunciat, i ha els containers aquests
