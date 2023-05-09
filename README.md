@@ -1,3 +1,9 @@
+## passos git
+1. git pull
+2. acabem de treballar, git add, git comit -m "el que sgui"
+3. git push -u origin nom branca
+
+
 # CineBus
 
 *Tria pel·li i vés-hi en bus!* 🚌 🎞️
