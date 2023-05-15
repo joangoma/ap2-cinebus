@@ -11,14 +11,30 @@ class Film:
     genre: list[str]
     directors: list[str]
     actors: list[str]
-    ...
+
+    def __init__(self, data_film_str) -> None:
+        """Initializes Film class given it's data in html format."""
+
+        data_film = json.loads(data_film_str)
+
+        self.title = data_film["title"]
+        self.genre = data_film["genre"]
+        self.directors = data_film["directors"]
+        self.actors = data_film["actors"]
 
 
 @dataclass
 class Cinema:
     name: str
     address: str
-    ...
+
+    def __init__(self, data_cinema_str) -> None:
+        """Initializes Cinema class given it's data in html format."""
+
+        data_cinema = json.loads(data_cinema_str)
+        self.name = data_cinema["name"]
+        # no trobo la puta adreça del teatre en el fitxer html.
+        self.address = "----"
 
 
 @dataclass
@@ -26,8 +42,43 @@ class Projection:
     film: Film
     cinema: Cinema
     time: tuple[int, int]  # hora:minut
+    duration: int  # minuts
     language: str
-    ...
+
+    def __init__(self, session_data: str, film: Film, cinema: Cinema) -> None:
+        """Initializes Projection dataclass given it's data in html format."""
+
+        session_time_str = session_data["data-times"][1:-1]
+
+        starting_time_str = session_time_str.split(",")[0][1:-1]
+        ending_time_str = session_time_str.split(",")[-1][1:-1]
+
+        starting_time: tuple[int, int] = (
+            int(starting_time_str.split(":")[0]),
+            int(starting_time_str.split(":")[1]),
+        )
+
+        ending_time: tuple[int, int] = (
+            int(ending_time_str.split(":")[0]),
+            int(ending_time_str.split(":")[1]),
+        )
+
+        self.film = film
+        self.cinema = cinema
+        self.time = starting_time
+        self.duration = self.calculate_duration(starting_time, ending_time)
+        self.language = "----"
+
+    def calculate_duration(
+        self, starting_time: tuple[int, int], ending_time: tuple[int, int]
+    ) -> int:
+        start_minutes = starting_time[0] * 60 + starting_time[1]
+        end_minutes = ending_time[0] * 60 + ending_time[1]
+
+        if ending_time[0] < starting_time[0]:
+            end_minutes += 24 * 60
+
+        return end_minutes - start_minutes
 
 
 @dataclass
@@ -35,85 +86,76 @@ class Billboard:
     films: list[Film]
     cinemas: list[Cinema]
     projections: list[Projection]
+    films_titles: set[str]
 
     def add_film(self, film: Film) -> None:
-        self.films.append(film)
+        """Adds a film in the list that tracks the film avoiding repetitions."""
+
+        if film.title not in self.films_titles:
+            self.films.append(film)
+            self.films_titles.add(film.title)
 
     def add_cinema(self, cinema: Cinema) -> None:
-        self.cinemas.append(cinema)
+        """Adds a cinema in the list that tracks the cinemas avoiding repetitions."""
+
+        if not self.cinemas or self.cinemas[-1] != cinema:
+            self.cinemas.append(cinema)
 
     def add_projection(self, projection: Projection) -> None:
         self.projections.append(projection)
 
     def search_film_by_word(self, word: str) -> list[Film]:
-        ...
+        return [film for film in self.films if word.lower() in film.title.lower()]
 
 
 def read() -> Billboard:
     """Scrapes the data from sensacine.com web of
-    the movies and theaters of Barcelona    """
+    the movies and theaters of Barcelona"""
 
-    # NOTA LAIA:
-    # Perque et facis la idea, tal com diu l'enunciat, i ha els containers aquests
-    # de nom item_resa que contenen dos diccionaris de nom data movie i data_theater.
-    # Estan com a dins d'un container (div d'html) per aixo accediexo al j_w aquest random.
-    # També hi ha una unordered list que conté tots els horaris però com que tot
-    # el accedim ho fem com en format string, he hagut de fer un codi poxo
-    # per passar les llistes de numeros en str a nombres normals.
-    # Com que els altres son diccionaris, hi ha el json aquest sexy que ens ho
-    # fa directament.
-    # Per veuere-ho bé, inspecciona la pagina i ja està
+    billboard: Billboard = Billboard(list(), list(), list(), set())
 
-    billboard: Billboard = Billboard(list(), list(), list())
-
-    URL: str = "https://www.sensacine.com/cines/cines-en-72480/?page=1"
+    base_url: str = "https://www.sensacine.com/cines/cines-en-72480/?page="
 
     for idx_page in range(1, 4):
-        # URL[-1] = str(idx_page)
+        url = base_url + str(idx_page)
 
-        page = requests.get(URL)
+        page = requests.get(url)
 
         soup = BeautifulSoup(page.content, "html.parser")
 
         movies = soup.find_all("div", {"class": "item_resa"})
 
-        for film in movies:
-            data_thater_movie_div = film.find("div", {"class": "j_w"})
+        for movie in movies:
+            data_theater_movie_div = movie.find("div", {"class": "j_w"})
 
-            # Accedim a la info que necessitem
-            data_film_str = data_thater_movie_div["data-movie"]
-            data_cinema_str = data_thater_movie_div["data-theater"]
-            list_film_sessions_str = film.find("ul", {"class": "list_hours"})
+            # We obtain and process the movie data
 
-            data_film = json.loads(data_film_str)
-            data_cinema = json.loads(data_cinema_str)
+            data_film_str = data_theater_movie_div["data-movie"]
+            film: Film = Film(data_film_str)
+            billboard.add_film(film)
+
+            # We obtain and process the theater data
+
+            data_cinema_str = data_theater_movie_div["data-theater"]
+            cinema: Cinema = Cinema(data_cinema_str)
+            billboard.add_cinema(cinema)
+
+            # We obtain and process the sessions hours data
+
+            list_film_sessions_str = movie.find("ul", {"class": "list_hours"})
 
             sessions_str = list_film_sessions_str.find_all("em")
 
-            film: Film = Film(
-                data_film["title"],
-                data_film["genre"],
-                data_film["directors"],
-                data_film["actors"],
-            )
-
-            cinema: Cinema = Cinema(data_cinema["name"], "hola")
-
-            billboard.add_film(film)
-            billboard.add_cinema(cinema)
-
-            # DIRIA QUE FUNCIONA PERÒ NO ESTÀ AL 100% TESTEJAT
             for session in sessions_str:
-                session_time_str = session["data-times"][1:-1]
-                session_time = [int(t) for t in session_time_str.split(",")]
+                projection: Projection = Projection(session, film, cinema)
 
-                projection: Projection = Projection(
-                    film, cinema, session_time, data_film["language"]
-                )
                 billboard.add_projection(projection)
 
     return billboard
 
 
 if __name__ == "__main__":
-    read()
+    billboard = read()
+    # test code
+    for f in billboard.search_film_by_word("La"):
+        print(f.title)
