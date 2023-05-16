@@ -93,7 +93,7 @@ def plot(g: BusesGraph, nom_fitxer: str) -> None:
     url = "http://a.tile.osm.org/13/41.3968/2.1564.png"
     url_ = "http://a.tile.osm.org/{z}/{x}/{y}.png"
     url2 = "https://www.openstreetmap.org/relation/347950#map=13/41.3968/2.1564"
-    
+
     map = StaticMap(500, 500, url_template = url_)
 
     #draw nodes
@@ -110,4 +110,4 @@ def plot(g: BusesGraph, nom_fitxer: str) -> None:
 
 #show(get_buses_graph())
 #print(nx.complete_graph(5).nodes)
-plot(get_buses_graph(), "hola.png")
+#plot(get_buses_graph(), "hola.png")
