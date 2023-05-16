@@ -13,7 +13,7 @@ class Film:
     actors: list[str]
 
     def __init__(self, data_film_str) -> None:
-        """Initializes Film class given it's data in html format."""
+        """Initializes Film class given its data in html format."""
 
         data_film = json.loads(data_film_str)
 
@@ -27,14 +27,17 @@ class Film:
 class Cinema:
     name: str
     address: str
+    coord: tuple[float, float]
 
     def __init__(self, data_cinema_str) -> None:
-        """Initializes Cinema class given it's data in html format."""
+        """Initializes Cinema class given its data in html format."""
 
         data_cinema = json.loads(data_cinema_str)
         self.name = data_cinema["name"]
         # no trobo la puta adreça del teatre en el fitxer html.
         self.address = "----"
+        self.coord = [0,0]
+        #obtenir coordenades a partir de https://www.sensacine.com/cines/cine/{E0764}/mapa/
 
 
 @dataclass
@@ -46,7 +49,7 @@ class Projection:
     language: str
 
     def __init__(self, session_data: str, film: Film, cinema: Cinema) -> None:
-        """Initializes Projection dataclass given it's data in html format."""
+        """Initializes Projection dataclass given its data in html format."""
 
         session_time_str = session_data["data-times"][1:-1]
 
@@ -67,11 +70,13 @@ class Projection:
         self.cinema = cinema
         self.time = starting_time
         self.duration = self.calculate_duration(starting_time, ending_time)
-        self.language = "----"
+        self.language = "----" #posa si es VO o doblada
+
 
     def calculate_duration(
         self, starting_time: tuple[int, int], ending_time: tuple[int, int]
     ) -> int:
+    #afegir docstring
         start_minutes = starting_time[0] * 60 + starting_time[1]
         end_minutes = ending_time[0] * 60 + ending_time[1]
 
@@ -101,14 +106,16 @@ class Billboard:
         if not self.cinemas or self.cinemas[-1] != cinema:
             self.cinemas.append(cinema)
 
+
     def add_projection(self, projection: Projection) -> None:
         self.projections.append(projection)
+
 
     def search_film_by_word(self, word: str) -> list[Film]:
         return [film for film in self.films if word.lower() in film.title.lower()]
 
 
-def read() -> Billboard:
+def read_billboard() -> Billboard:
     """Scrapes the data from sensacine.com web of
     the movies and theaters of Barcelona"""
 
@@ -140,6 +147,7 @@ def read() -> Billboard:
             cinema: Cinema = Cinema(data_cinema_str)
             billboard.add_cinema(cinema)
 
+
             # We obtain and process the sessions hours data
 
             list_film_sessions_str = movie.find("ul", {"class": "list_hours"})
@@ -155,7 +163,4 @@ def read() -> Billboard:
 
 
 if __name__ == "__main__":
-    billboard = read()
-    # test code
-    for f in billboard.search_film_by_word("La"):
-        print(f.title)
+    billboard = read_billboard()
