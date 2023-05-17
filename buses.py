@@ -90,19 +90,19 @@ def show(g: BusesGraph) -> None:
 def plot(g: BusesGraph, nom_fitxer: str) -> None:
     '''saves the graph as an image with the map of the city in the background
     in the file nom_fitxer using staticmaps'''
-    url = "http://a.tile.osm.org/13/41.3968/2.1564.png"
-    url_ = "http://a.tile.osm.org/{z}/{x}/{y}.png"
-    url2 = "https://www.openstreetmap.org/relation/347950#map=13/41.3968/2.1564"
-    
-    map = StaticMap(500, 500, url_template = url_)
+
+
+    map = StaticMap(300, 300)
 
     #draw nodes
     for pos in nx.get_node_attributes(g, "coord").values():
-        map.add_marker(CircleMarker(pos, 'green', 6))
+        map.add_marker(CircleMarker((pos[1], pos[0]), 'green', 3))
 
     #draw edges
     for edge in g.edges:
-        map.add_line(Line([g.nodes[edge[0]]['coord'], g.nodes[edge[1]]['coord']], 'blue', 3))
+        coord_1 = (g.nodes[edge[0]]['coord'][1], g.nodes[edge[0]]['coord'][0])
+        coord_2 = (g.nodes[edge[1]]['coord'][1], g.nodes[edge[1]]['coord'][0])
+        map.add_line(Line([coord_1, coord_2], 'blue', 2))
 
     image = map.render()
     image.save(nom_fitxer)
@@ -110,4 +110,4 @@ def plot(g: BusesGraph, nom_fitxer: str) -> None:
 
 #show(get_buses_graph())
 #print(nx.complete_graph(5).nodes)
-plot(get_buses_graph(), "hola.png")
+plot(get_buses_graph(), "buses_bcn_map.png")
