@@ -27,21 +27,7 @@ def get_osmnx_graph() -> OsmnxGraph:
         g: OsmnxGraph = ox.graph_from_place("Barcelona", network_type='walk', simplify=True)
         save_osmnx_graph(g, FILE_GRAPH_NAME)
         return g
-    #manera de recorrer totes les arestes dun OsmnxGraph
-    '''
-    # for each node and its neighbours' information ...
-    for u, nbrsdict in graph.adjacency():
-        print(u, nbrsdict)
-        # for each adjacent node v and its (u, v) edges' information ...
-        for v, edgesdict in nbrsdict.items():
-            print('   ', v)
-            # osmnx graphs are multigraphs, but we will just consider their first edge
-            eattr = edgesdict[0]    # eattr contains the attributes of the first edge
-            # we remove geometry information from eattr because we don't need it and take a lot of space
-            if 'geometry' in eattr:
-                del(eattr['geometry'])
-            print('        ', eattr)
-    '''
+
 
 def save_osmnx_graph(g: OsmnxGraph, filename: str) -> None:
     '''Saves g in file {filename}'''
@@ -61,6 +47,23 @@ def load_osmnx_graph(filename: str) -> OsmnxGraph:
 def build_city_graph(g1: OsmnxGraph, g2: BusesGraph) -> CityGraph:
     '''Merges g1 and g2 to build a citygraph'''
     city: CityGraph = CityGraph() #ns si es pot escriure així
+
+    #manera de recorrer totes les arestes dun OsmnxGraph
+
+    # for each node and its neighbours' information ...
+    for u, nbrsdict in graph.adjacency():
+        print(u, nbrsdict)
+        # for each adjacent node v and its (u, v) edges' information ...
+        for v, edgesdict in nbrsdict.items():
+            print('   ', v)
+            # osmnx graphs are multigraphs, but we will just consider their first edge
+            eattr = edgesdict[0]    # eattr contains the attributes of the first edge
+            # we remove geometry information from eattr because we don't need it and take a lot of space
+            if 'geometry' in eattr:
+                del(eattr['geometry'])
+            print('        ', eattr)
+
+
     city.add_nodes_from(g1.nodes(data = True))
     city.add_nodes_from(g2.nodes(data = True))
     city.add_edges_from(g1.edges(data = True))
@@ -81,4 +84,15 @@ def plot(g: CityGraph, filename: str) -> None: ...
 def plot_path(g: CityGraph, p: Path, filename: str, *args) -> None: ...
     # mostra el camí p en l'arxiu filename
 
-g = get_osmnx_graph()
+g = nx.Graph()
+g.add_node(1)
+g.add_node(2)
+g.add_node(3)
+g.add_edge(1,2)
+g.add_edge(1,3)
+
+for u, neighbors in g.adjacency():
+    print(u, neighbors)
+
+for u, neighbors in g.adj.items():
+    print(u, neighbors)
