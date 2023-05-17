@@ -31,6 +31,8 @@ def draw_billboard(billboard: Billboard) -> None:
     table.add_column("Durada")
     table.add_column("Horari")
 
+    key = Prompt.ask("Filtra per: ", choices=["time", "genre", "duration"])
+
     for i, projection in enumerate(sorted(billboard.projections, key=lambda x: x.time)):
         table.add_row(
             projection.cinema.name,
