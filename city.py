@@ -15,23 +15,50 @@ Path: TypeAlias = list[T]
 WALK_SPEED = 2
 BUS_SPEED = 40
 
+BUS_WAIT_TIME = 5 #minutes
+
 FILE_GRAPH_NAME = "graph"
+
+def delete_geometry_from_edges(g: OsmnxGraph) -> OsmnxGraph:
+    for u, v, key, geom in g.edges(data = "geometry", keys = True):
+        if geom is not None:
+            del(g[u][v][key]["geometry"])
+
+    return g
+
+
+def get_only_first_edge(g: OsmnxGraph) -> OsmnxGraph:
+    # for each node and its neighbours' information ...
+    for u, nbrs_dict in g.adjacency():
+        print(u, nbrsdict)
+        # for each adjacent node v and its (u, v) edges' information ...
+        for v, edges_dict in nbrsdict.items():
+            print('   ', v)
+            # osmnx graphs are multigraphs, but we will just consider their first edge
+            e_attr = edges_dict[0]    # eattr contains the attributes of the first edge
+            # we remove geometry information from eattr because we don't need it and take a lot of space
+            if 'geometry' in e_attr:
+                del(e_attr['geometry'])
+            print('        ', e_attr)
+    return g
 
 
 def get_osmnx_graph() -> OsmnxGraph:
     '''returns a graph of the streets of Barcelona'''
     path = os.getcwd() + '\\' + FILE_GRAPH_NAME
     if os.path.exists(path):
-        return load_osmx_graph(FILE_GRAPH_NAME)
+        return load_osmnx_graph(FILE_GRAPH_NAME)
     else:
         g: OsmnxGraph = ox.graph_from_place("Barcelona", network_type='walk', simplify=True)
+
+        #Si voleu eliminar aquesta informació de totes les arestes (potser abans de guardar el graf en un fitxer) podeu fer:
+        g = delete_geometry_from_edges(g)
         save_osmnx_graph(g, FILE_GRAPH_NAME)
         return g
 
 
 def save_osmnx_graph(g: OsmnxGraph, filename: str) -> None:
-    '''Saves g in file {filename}'''
-    # guarda el graf g al fitxer filename
+    '''Saves multigraph g in file {filename}'''
 
     pickle_out = open(filename, "wb")
     pickle.dump(g, pickle_out)
@@ -39,7 +66,7 @@ def save_osmnx_graph(g: OsmnxGraph, filename: str) -> None:
 
 
 def load_osmnx_graph(filename: str) -> OsmnxGraph:
-    '''Returns the graph stored in file filename'''
+    '''Returns the multigraph stored in file filename'''
     pickle_in = open(filename, "rb")
     return pickle.load(pickle_in)
 
@@ -48,22 +75,13 @@ def build_city_graph(g1: OsmnxGraph, g2: BusesGraph) -> CityGraph:
     '''Merges g1 and g2 to build a citygraph'''
     city: CityGraph = CityGraph() #ns si es pot escriure així
 
-    #manera de recorrer totes les arestes dun OsmnxGraph
+    print(g1.nodes(data = True))
 
-    # for each node and its neighbours' information ...
-    for u, nbrsdict in graph.adjacency():
-        print(u, nbrsdict)
-        # for each adjacent node v and its (u, v) edges' information ...
-        for v, edgesdict in nbrsdict.items():
-            print('   ', v)
-            # osmnx graphs are multigraphs, but we will just consider their first edge
-            eattr = edgesdict[0]    # eattr contains the attributes of the first edge
-            # we remove geometry information from eattr because we don't need it and take a lot of space
-            if 'geometry' in eattr:
-                del(eattr['geometry'])
-            print('        ', eattr)
-
-
+    #nodes:
+        #afegir atribut type = 'Cruilla' o 'Parada'
+        #fer que el format de les coordenades sigui el mateix
+    #arestes:
+        #afegir atribyt type = "Carrer" o "Bus"
     city.add_nodes_from(g1.nodes(data = True))
     city.add_nodes_from(g2.nodes(data = True))
     city.add_edges_from(g1.edges(data = True))
@@ -75,24 +93,23 @@ def build_city_graph(g1: OsmnxGraph, g2: BusesGraph) -> CityGraph:
 def find_path(ox_g: OsmnxGraph, g: CityGraph, src: Coord, dst: Coord) -> Path: ...
     #path llista ordenada de nodes?
 
-def show(g: CityGraph) -> None: ...
+def show(g: CityGraph) -> None:
     # mostra g de forma interactiva en una finestra
+    #shows the graph interactively using network.draw
 
-def plot(g: CityGraph, filename: str) -> None: ...
+    positions = nx.get_node_attributes(g, "coord")
+    nx.draw(g, pos=positions, with_labels = False, node_size=10)
+    plt.show()
+
+
+def plot(g: CityGraph, filename: str) -> None:
+    pass
     # desa g com una imatge amb el mapa de la cuitat de fons en l'arxiu filename
 
-def plot_path(g: CityGraph, p: Path, filename: str, *args) -> None: ...
+def plot_path(g: CityGraph, p: Path, filename: str, *args) -> None:
+    pass
     # mostra el camí p en l'arxiu filename
 
-g = nx.Graph()
-g.add_node(1)
-g.add_node(2)
-g.add_node(3)
-g.add_edge(1,2)
-g.add_edge(1,3)
 
-for u, neighbors in g.adjacency():
-    print(u, neighbors)
 
-for u, neighbors in g.adj.items():
-    print(u, neighbors)
+show(build_city_graph(get_osmnx_graph(), get_buses_graph()))
