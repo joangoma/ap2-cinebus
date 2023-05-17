@@ -34,8 +34,10 @@ def get_linies():
     linies = data[list(data.keys())[1]]
     return linies[list(linies.keys())[0]] #llista de diccionaris
 
+
 def get_weight():
     return 10
+
 
 def get_buses_graph() -> BusesGraph:
     '''downloads the data of the AMB and returns an undirected graph of buses'''
@@ -80,10 +82,7 @@ def show(g: BusesGraph) -> None:
     #nota: hi ha nodes no connexos pq pertanyen a linies dhospitalet, sant adria etc
 
     positions = nx.get_node_attributes(g, "coord")
-
-    #print(set(g.nodes) - {x[0] for x in g.edges} - {x[1] for x in g.edges}) nodes no connexos
-
-    nx.draw(g, pos=positions, with_labels = False, node_size=10)
+    nx.draw(g, pos=positions, with_labels = False, node_size = 10)
     plt.show()
 
 
@@ -110,4 +109,5 @@ def plot(g: BusesGraph, nom_fitxer: str) -> None:
 
 #show(get_buses_graph())
 #print(nx.complete_graph(5).nodes)
+#print(set(g.nodes) - {x[0] for x in g.edges} - {x[1] for x in g.edges}) nodes no connexos
 plot(get_buses_graph(), "buses_bcn_map.png")
