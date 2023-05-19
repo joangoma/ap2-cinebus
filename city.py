@@ -67,6 +67,7 @@ def save_osmnx_graph(g: OsmnxGraph, filename: str) -> None:
 
 def load_osmnx_graph(filename: str) -> OsmnxGraph:
     '''Returns the multigraph stored in file filename'''
+
     pickle_in = open(filename, "rb")
     return pickle.load(pickle_in)
 
@@ -75,17 +76,25 @@ def build_city_graph(g1: OsmnxGraph, g2: BusesGraph) -> CityGraph:
     '''Merges g1 and g2 to build a citygraph'''
     city: CityGraph = CityGraph() #ns si es pot escriure així
 
-    print(g1.nodes(data = True))
+    #nodes g1:
+    for node in g1.nodes(data = True):
+        city.add_node(node[0], coord = (node[1]['y'], node[1]['x']), type = "Cruilla")
+        #afegir atribut type = "Cruilla"
+        #canviar y x per una tupla coord
+        #eliminar street count
+        # {'y': 41.4259553, 'x': 2.1866781, 'street_count': 3}) -> format anterior
 
-    #nodes:
-        #afegir atribut type = 'Cruilla' o 'Parada'
-        #fer que el format de les coordenades sigui el mateix
-    #arestes:
-        #afegir atribyt type = "Carrer" o "Bus"
-    city.add_nodes_from(g1.nodes(data = True))
-    city.add_nodes_from(g2.nodes(data = True))
-    city.add_edges_from(g1.edges(data = True))
-    city.add_edges_from(g2.edges(data = True))
+    #nodes g2:
+    city.add_nodes_from(g2.nodes(data = True), type = "Parada")
+
+    #arestes g1:
+    for edge in g1.edges(data = True):
+        if edge[0] != edge[1]: #hi havia loops a city
+            city.add_edge(edge[0], edge[1], name = edge[2].get('name', None), type = "Carrer")
+
+
+    #arestes g2:
+    city.add_edges_from(g2.edges(data = True), type = "Bus") #conservem totes les dades
 
     return city
 
@@ -93,22 +102,27 @@ def build_city_graph(g1: OsmnxGraph, g2: BusesGraph) -> CityGraph:
 def find_path(ox_g: OsmnxGraph, g: CityGraph, src: Coord, dst: Coord) -> Path: ...
     #path llista ordenada de nodes?
 
+    #hem de guardar la linia de bus de la que venim per si cal fer transbord.
+
 def show(g: CityGraph) -> None:
     # mostra g de forma interactiva en una finestra
     #shows the graph interactively using network.draw
-
+    for edge in g.edges(data = True):
+        if edge[0] == edge[1]:
+            print(edge)
     positions = nx.get_node_attributes(g, "coord")
     nx.draw(g, pos=positions, with_labels = False, node_size=10)
     plt.show()
 
 
-def plot(g: CityGraph, filename: str) -> None:
+def plot(g: CityGraph, filename: str) -> None: #trobo innecessari aquest mètode
     pass
     # desa g com una imatge amb el mapa de la cuitat de fons en l'arxiu filename
 
 def plot_path(g: CityGraph, p: Path, filename: str, *args) -> None:
     pass
     # mostra el camí p en l'arxiu filename
+
 
 
 
