@@ -110,8 +110,28 @@ class Billboard:
     def add_projection(self, projection: Projection) -> None:
         self.projections.append(projection)
 
-    def search_film_by_word(self, word: str) -> list[Film]:
-        return [film for film in self.films if word.lower() in film.title.lower()]
+    def search_projection_by_word(self, word: str) -> list[Projection]:
+        return [
+            projection
+            for projection in self.projections
+            if word.lower() in projection.film.title.lower()
+        ]
+
+    def search_projection_by_time(
+        self, starting_time: tuple[int, int]
+    ) -> list[Projection]:
+        return [
+            projection
+            for projection in self.projections
+            if starting_time <= projection.time
+        ]
+
+    def search_projection_by_duration(self, duration: int) -> list[Projection]:
+        return [
+            projection
+            for projection in self.projections
+            if duration <= projection.duration
+        ]
 
 
 def read_billboard() -> Billboard:
