@@ -160,33 +160,36 @@ def read_billboard() -> Billboard:
 
         soup = BeautifulSoup(page.content, "html.parser")
 
-        movies = soup.find_all("div", {"class": "item_resa"})
+        cinema_div = soup.find_all("div", {"class": "tabs_box_pan item-0"})
 
-        for movie in movies:
-            data_theater_movie_div = movie.find("div", {"class": "j_w"})
+        for movies_div in cinema_div:
+            # print(movie_div)
+            movies = movies_div.find_all("div", {"class": "item_resa"})
+            for movie in movies:
+                data_theater_movie_div = movie.find("div", {"class": "j_w"})
 
-            # We obtain and process the movie data
+                # We obtain and process the movie data
 
-            data_film_str = data_theater_movie_div["data-movie"]
-            film: Film = Film(data_film_str)
-            billboard.add_film(film)
+                data_film_str = data_theater_movie_div["data-movie"]
+                film: Film = Film(data_film_str)
+                billboard.add_film(film)
 
-            # We obtain and process the theater data
+                # We obtain and process the theater data
 
-            data_cinema_str = data_theater_movie_div["data-theater"]
-            cinema: Cinema = Cinema(data_cinema_str, cinemas_location)
-            billboard.add_cinema(cinema)
+                data_cinema_str = data_theater_movie_div["data-theater"]
+                cinema: Cinema = Cinema(data_cinema_str, cinemas_location)
+                billboard.add_cinema(cinema)
 
-            # We obtain and process the sessions hours data
+                # We obtain and process the sessions hours data
 
-            list_film_sessions_str = movie.find("ul", {"class": "list_hours"})
+                list_film_sessions_str = movie.find("ul", {"class": "list_hours"})
 
-            sessions_str = list_film_sessions_str.find_all("em")
+                sessions_str = list_film_sessions_str.find_all("em")
 
-            for session in sessions_str:
-                projection: Projection = Projection(session, film, cinema)
+                for session in sessions_str:
+                    projection: Projection = Projection(session, film, cinema)
 
-                billboard.add_projection(projection)
+                    billboard.add_projection(projection)
 
     return billboard
 
