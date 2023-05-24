@@ -74,10 +74,10 @@ def join_parada_cruilla(city, buses, cruilles) -> None:
     '''each stop is joined with its closest crosswalk'''
 
     parades = sorted(buses.nodes(data = True))
-    X = [parada[1]['coord'][0] for parada in parades] #(id, coord[0], coord[1])
-    Y = [parada[1]['coord'][1] for parada in parades]
+    X = [parada[1]['coord'][1] for parada in parades] #(id, coord[0], coord[1])
+    Y = [parada[1]['coord'][0] for parada in parades]
 
-    city.add_edges_from(zip([parada[0] for parada in parades], ox.distance.nearest_nodes(cruilles, X, Y, return_dist=False)))
+    city.add_edges_from(list(zip([parada[0] for parada in parades], ox.distance.nearest_nodes(cruilles, X, Y, return_dist=False))))
 
 
 def build_city_graph(g1: OsmnxGraph, g2: BusesGraph) -> CityGraph:
@@ -106,8 +106,11 @@ def build_city_graph(g1: OsmnxGraph, g2: BusesGraph) -> CityGraph:
     return city
 
 
-def find_path(ox_g: OsmnxGraph, g: CityGraph, src: Coord, dst: Coord) -> Path: ...
+def find_path(ox_g: OsmnxGraph, g: CityGraph, src: Coord, dst: Coord) -> Path:
     #path llista ordenada de nodes?
+
+    cruilles = ox.distance.nearest_nodes(ox_g, [src[0], dst[0]], [src[1], dst[1]], return_dist=False)
+    #busquem node cruilla src i dst
 
     #hem de guardar la linia de bus de la que venim per si cal fer transbord.
 
