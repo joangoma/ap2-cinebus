@@ -24,8 +24,6 @@ def delete_geometry_from_edges(g: OsmnxGraph) -> OsmnxGraph:
         if geom is not None:
             del(g[u][v][key]["geometry"])
 
-    return g
-
 
 def get_only_first_edge(g: OsmnxGraph) -> OsmnxGraph:
     # for each node and its neighbours' information ...
@@ -40,7 +38,6 @@ def get_only_first_edge(g: OsmnxGraph) -> OsmnxGraph:
             if 'geometry' in e_attr:
                 del(e_attr['geometry'])
             print('        ', e_attr)
-    return g
 
 
 def get_osmnx_graph() -> OsmnxGraph:
@@ -52,7 +49,8 @@ def get_osmnx_graph() -> OsmnxGraph:
         g: OsmnxGraph = ox.graph_from_place("Barcelona", network_type='walk', simplify=True)
 
         #Si voleu eliminar aquesta informació de totes les arestes (potser abans de guardar el graf en un fitxer) podeu fer:
-        g = delete_geometry_from_edges(g)
+        delete_geometry_from_edges(g)
+        get_only_first_edge(g)
         save_osmnx_graph(g, FILE_GRAPH_NAME)
         return g
 
@@ -72,16 +70,24 @@ def load_osmnx_graph(filename: str) -> OsmnxGraph:
     return pickle.load(pickle_in)
 
 
+def join_parada_cruilla(city, buses, cruilles) -> None:
+    '''each stop is joined with its closest crosswalk'''
+
+    parades = sorted(buses.nodes(data = True))
+    X = [parada[1]['coord'][0] for parada in parades] #(id, coord[0], coord[1])
+    Y = [parada[1]['coord'][1] for parada in parades]
+
+    city.add_edges_from(zip([parada[0] for parada in parades], ox.distance.nearest_nodes(cruilles, X, Y, return_dist=False)))
+
+
 def build_city_graph(g1: OsmnxGraph, g2: BusesGraph) -> CityGraph:
-    '''Merges g1 and g2 to build a citygraph'''
+    '''Merges g1 and g2 to build a Citygraph'''
     city: CityGraph = CityGraph() #ns si es pot escriure així
 
     #nodes g1:
     for node in g1.nodes(data = True):
         city.add_node(node[0], coord = (node[1]['y'], node[1]['x']), type = "Cruilla")
-        #afegir atribut type = "Cruilla"
-        #canviar y x per una tupla coord
-        #eliminar street count
+        #afegir atribut type = "Cruilla", canviar y x per una tupla coord,  #eliminar street count
         # {'y': 41.4259553, 'x': 2.1866781, 'street_count': 3}) -> format anterior
 
     #nodes g2:
@@ -92,9 +98,10 @@ def build_city_graph(g1: OsmnxGraph, g2: BusesGraph) -> CityGraph:
         if edge[0] != edge[1]: #hi havia loops a city
             city.add_edge(edge[0], edge[1], name = edge[2].get('name', None), type = "Carrer")
 
-
     #arestes g2:
     city.add_edges_from(g2.edges(data = True), type = "Bus") #conservem totes les dades
+
+    join_parada_cruilla(city, g2, g1)
 
     return city
 
@@ -107,23 +114,46 @@ def find_path(ox_g: OsmnxGraph, g: CityGraph, src: Coord, dst: Coord) -> Path: .
 def show(g: CityGraph) -> None:
     # mostra g de forma interactiva en una finestra
     #shows the graph interactively using network.draw
-    for edge in g.edges(data = True):
-        if edge[0] == edge[1]:
-            print(edge)
+
     positions = nx.get_node_attributes(g, "coord")
     nx.draw(g, pos=positions, with_labels = False, node_size=10)
     plt.show()
 
 
-def plot(g: CityGraph, filename: str) -> None: #trobo innecessari aquest mètode
-    pass
+def plot(g: CityGraph, filename: str) -> None:
     # desa g com una imatge amb el mapa de la cuitat de fons en l'arxiu filename
+    map = StaticMap(300, 300)
+
+    # draw nodes
+    for node in g.nodes(data = True):
+        if node[1]['type'] == "Parada":
+            color = "red"
+
+        elif node[1]['type'] == "Cruilla":
+            color = "blue"
+
+        map.add_marker(CircleMarker(g[1]['coord'], color, 3))
+
+    # draw edges
+    for edge in g.edges(data = True):
+        if edge[2]['type'] == "Carrer":
+            color = 'orange'
+
+        elif edge[2]['type'] == "Bus":
+            color = "green"
+
+        #we swap the components
+        coord_1 = (g.nodes[edge[0]]["coord"][1], g.nodes[edge[0]]["coord"][0])
+        coord_2 = (g.nodes[edge[1]]["coord"][1], g.nodes[edge[1]]["coord"][0])
+        map.add_line(Line([coord_1, coord_2], color, 2))
+
+    image = map.render()
+    image.save(nom_fitxer)
+
 
 def plot_path(g: CityGraph, p: Path, filename: str, *args) -> None:
     pass
     # mostra el camí p en l'arxiu filename
-
-
 
 
 show(build_city_graph(get_osmnx_graph(), get_buses_graph()))
