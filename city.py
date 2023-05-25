@@ -39,6 +39,12 @@ def get_only_first_edge(g: OsmnxGraph) -> OsmnxGraph:
                 del(e_attr['geometry'])
             print('        ', e_attr)
 
+'''
+OSM -> 41, 2 latitud y longitud
+STATICMAP -> 2, 41 (LON- LAT)
+BUSES -> 41, 2 UTM
+ox.distance.nearest_nodes -> 2, 41 LON - LAT
+'''
 
 def get_osmnx_graph() -> OsmnxGraph:
     '''returns a graph of the streets of Barcelona'''
@@ -71,7 +77,7 @@ def load_osmnx_graph(filename: str) -> OsmnxGraph:
 
 
 def join_parada_cruilla(city, buses, cruilles) -> None:
-    '''each stop is joined with its closest crosswalk'''
+    '''each stop is joined with the closest crosswalk'''
 
     parades = sorted(buses.nodes(data = True))
     X = [parada[1]['coord'][1] for parada in parades] #(id, coord[0], coord[1])
@@ -109,8 +115,23 @@ def build_city_graph(g1: OsmnxGraph, g2: BusesGraph) -> CityGraph:
 def find_path(ox_g: OsmnxGraph, g: CityGraph, src: Coord, dst: Coord) -> Path:
     #path llista ordenada de nodes?
 
-    cruilles = ox.distance.nearest_nodes(ox_g, [src[0], dst[0]], [src[1], dst[1]], return_dist=False)
-    #busquem node cruilla src i dst
+    #ox.distance.nearest_nodes necessita coordenades girades
+
+    cruilla_src, cruilla_dst = ox.distance.nearest_nodes(ox_g, [src[1], dst[1]], [src[0], dst[0]], return_dist=False)
+
+
+    #plot cruilles i posicio original
+    '''
+    h = nx.Graph()
+    print(cruilles)
+    print(g.nodes[cruilles[0]])
+    h.add_nodes_from([(cruilles[0], g.nodes[cruilles[0]]), (cruilles[1], g.nodes[cruilles[1]])])
+    h.add_node(1, coord = src)
+    h.add_node(2, coord = dst)
+
+    positions = nx.get_node_attributes(h, "coord")
+    nx.draw(h, pos=positions, with_labels = False, node_size=10)
+    plt.show()'''
 
     #hem de guardar la linia de bus de la que venim per si cal fer transbord.
 
@@ -159,4 +180,4 @@ def plot_path(g: CityGraph, p: Path, filename: str, *args) -> None:
     # mostra el camí p en l'arxiu filename
 
 
-show(build_city_graph(get_osmnx_graph(), get_buses_graph()))
+#find_path(get_osmnx_graph(), build_city_graph(get_osmnx_graph(), get_buses_graph()), (41.3860832,2.1627945), (41.4158589,2.1482698))
