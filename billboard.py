@@ -29,17 +29,14 @@ class Cinema:
     address: str
     coord: tuple[float, float]
 
-    def __init__(
-        self, data_cinema_str, cinemas_location: dict[str, tuple[float, float]]
-    ) -> None:
-        """Initializes Cinema class given its data in html format."""
+    def __init__(self, data_cinema_str) -> None:
+        """Initializes Cinema class given it's data in html format."""
 
         data_cinema = json.loads(data_cinema_str)
-        self.name = data_cinema["name"]
+        self.name = data_cinema["name"].strip()
+
         # no trobo la puta adreça del teatre en el fitxer html.
         self.address = "----"
-        self.coord = cinemas_location[self.name]
-        # obtenir coordenades a partir de https://www.sensacine.com/cines/cine/{E0764}/mapa/
 
 
 @dataclass
@@ -181,6 +178,20 @@ def read_billboard() -> Billboard:
         soup = BeautifulSoup(page.content, "html.parser")
 
         cinema_div = soup.find_all("div", {"class": "tabs_box_pan item-0"})
+        cinema_name_adress_html = soup.find_all(
+            "div", {"class": "margin_10b j_entity_container"}
+        )
+
+        for cinema in cinema_name_adress_html:
+            cinema_adress_html = cinema.find(
+                lambda tag: tag.name == "span" and tag.get("class") == ["lighten"]
+            )
+            adress = cinema_adress_html.text.strip()
+
+            cinema_name_html = cinema.find("a", {"class": "no_underline j_entities"})
+            name = cinema_name_html.text.strip()
+            print(name, adress)
+            cinema_name_adress[name] = adress
 
         for movies_div in cinema_div:
             # print(movie_div)
@@ -197,7 +208,9 @@ def read_billboard() -> Billboard:
                 # We obtain and process the theater data
 
                 data_cinema_str = data_theater_movie_div["data-theater"]
-                cinema: Cinema = Cinema(data_cinema_str, cinemas_location)
+                cinema: Cinema = Cinema(
+                    data_cinema_str, cinemas_location, cinema_name_adress
+                )
                 billboard.add_cinema(cinema)
 
                 # We obtain and process the sessions hours data
@@ -215,4 +228,7 @@ def read_billboard() -> Billboard:
 
 
 if __name__ == "__main__":
-    billboard = read_billboard()
+    billboard = read()
+    # test code
+    for f in billboard.search_film_by_word("La"):
+        print(f.title)
