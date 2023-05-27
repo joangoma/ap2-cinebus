@@ -1,4 +1,5 @@
 import json
+import urllib.parse
 from dataclasses import dataclass
 
 import requests
@@ -30,16 +31,16 @@ class Cinema:
     coord: tuple[float, float]
 
     def __init__(
-        self, data_cinema_str, cinemas_location: dict[str, tuple[float, float]]
+        self,
+        name,
+        adress: str,
+        coord: tuple[float, float],
     ) -> None:
-        """Initializes Cinema class given its data in html format."""
+        """Initializes Cinema class given its parameters"""
 
-        data_cinema = json.loads(data_cinema_str)
-        self.name = data_cinema["name"]
-        # no trobo la puta adreça del teatre en el fitxer html.
-        self.address = "----"
-        self.coord = cinemas_location[self.name]
-        # obtenir coordenades a partir de https://www.sensacine.com/cines/cine/{E0764}/mapa/
+        self.name = name
+        self.address = adress
+        self.coord = coord
 
 
 @dataclass
@@ -171,7 +172,11 @@ def read_billboard() -> Billboard:
         "Cinemes Can Castellet": (41.345363870736016, 2.0405710690597574),
         "Cinemes Sant Cugat": (41.469755698209426, 2.0905412796073817),
         "Cines Montcada": (41.49435241992408, 2.180264296085647),
+        "Yelmo Cines Baricentro": (41.508494990085694, 2.1383378243356965),
+        "Cinesa La Farga 3D": (41.36328395211327, 2.104722953165676),
     }
+
+    cinema_name_adress: dict[str, tuple[str, tuple[float, float]]] = dict()
 
     for idx_page in range(1, 4):
         url = base_url + str(idx_page)
@@ -180,11 +185,38 @@ def read_billboard() -> Billboard:
 
         soup = BeautifulSoup(page.content, "html.parser")
 
-        cinema_div = soup.find_all("div", {"class": "tabs_box_pan item-0"})
+        cinemas_div = soup.find_all("div", {"class": "tabs_box_pan item-0"})
+        cinema_name_adress_html = soup.find_all(
+            "div", {"class": "margin_10b j_entity_container"}
+        )
 
-        for movies_div in cinema_div:
+        for cinema in cinema_name_adress_html:
+            cinema_adress_html = cinema.find(
+                lambda tag: tag.name == "span" and tag.get("class") == ["lighten"]
+            )
+            address = cinema_adress_html.text.strip()
+
+            cinema_name_html = cinema.find("a", {"class": "no_underline j_entities"})
+            name = cinema_name_html.text.strip()
+            address = address.lower()
+            address = address.replace("calle", "carrer")
+            address = address.replace("avenida", "avinguda")
+            address = address.replace("paseig", "passeig")
+
+            url = (
+                "https://nominatim.openstreetmap.org/search/"
+                + urllib.parse.quote(address)
+                + "?format=json"
+            )
+            # response = requests.get(url).json()
+            # coord: tuple[float, float] = response[0]["lat"], response[0]["lon"]
+            cinema_name_adress[name] = address, cinemas_location[name]
+            # print(name, address, coord)
+
+        for cinema_div in cinemas_div:
             # print(movie_div)
-            movies = movies_div.find_all("div", {"class": "item_resa"})
+            movies = cinema_div.find_all("div", {"class": "item_resa"})
+
             for movie in movies:
                 data_theater_movie_div = movie.find("div", {"class": "j_w"})
 
@@ -197,7 +229,11 @@ def read_billboard() -> Billboard:
                 # We obtain and process the theater data
 
                 data_cinema_str = data_theater_movie_div["data-theater"]
-                cinema: Cinema = Cinema(data_cinema_str, cinemas_location)
+                data_cinema = json.loads(data_cinema_str)
+                name = data_cinema["name"].strip()
+                cinema: Cinema = Cinema(
+                    name, cinema_name_adress[name][0], cinema_name_adress[name][1]
+                )
                 billboard.add_cinema(cinema)
 
                 # We obtain and process the sessions hours data
@@ -210,7 +246,7 @@ def read_billboard() -> Billboard:
                     projection: Projection = Projection(session, film, cinema)
 
                     billboard.add_projection(projection)
-
+    # print(cinema_name_adress)
     return billboard
 
 
