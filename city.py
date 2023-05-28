@@ -4,16 +4,18 @@ from typing import TypeAlias, TypeVar
 import os
 import pickle
 from buses import *
+import math
+from haversine import haversine
 
 T = TypeVar("T")
 
 OsmnxGraph : TypeAlias = nx.MultiDiGraph
 CityGraph : TypeAlias = nx.Graph
 Coord : TypeAlias = tuple[float, float]   # (latitude, longitude)
-Path: TypeAlias = list[T]
+Path: TypeAlias = tuple[list[T], int]
 
-WALK_SPEED = 2
-BUS_SPEED = 40
+WALK_SPEED = 2 #km/h
+BUS_SPEED = 40 #km/h
 
 BUS_WAIT_TIME = 5 #minutes
 
@@ -25,19 +27,19 @@ def delete_geometry_from_edges(g: OsmnxGraph) -> OsmnxGraph:
             del(g[u][v][key]["geometry"])
 
 
-def get_only_first_edge(g: OsmnxGraph) -> OsmnxGraph:
+def get_only_first_edge_and_del_geometry(g: OsmnxGraph) -> OsmnxGraph:
     # for each node and its neighbours' information ...
     for u, nbrs_dict in g.adjacency():
-        print(u, nbrsdict)
+        #print(u, nbrs_dict)
         # for each adjacent node v and its (u, v) edges' information ...
-        for v, edges_dict in nbrsdict.items():
-            print('   ', v)
+        for v, edges_dict in nbrs_dict.items():
+            #print('   ', v)
             # osmnx graphs are multigraphs, but we will just consider their first edge
             e_attr = edges_dict[0]    # eattr contains the attributes of the first edge
             # we remove geometry information from eattr because we don't need it and take a lot of space
             if 'geometry' in e_attr:
                 del(e_attr['geometry'])
-            print('        ', e_attr)
+            #print('        ', e_attr)
 
 '''
 OSM -> 41, 2 latitud y longitud
@@ -55,8 +57,15 @@ def get_osmnx_graph() -> OsmnxGraph:
         g: OsmnxGraph = ox.graph_from_place("Barcelona", network_type='walk', simplify=True)
 
         #Si voleu eliminar aquesta informació de totes les arestes (potser abans de guardar el graf en un fitxer) podeu fer:
-        delete_geometry_from_edges(g)
-        get_only_first_edge(g)
+        #delete_geometry_from_edges(g)
+        for edge in g.edges:
+            print(edge)
+            break
+
+        get_only_first_edge_and_del_geometry(g)
+        for edge in g.edges:
+            print(edge)
+            break
         save_osmnx_graph(g, FILE_GRAPH_NAME)
         return g
 
@@ -83,7 +92,35 @@ def join_parada_cruilla(city, buses, cruilles) -> None:
     X = [parada[1]['coord'][1] for parada in parades] #(id, coord[0], coord[1])
     Y = [parada[1]['coord'][0] for parada in parades]
 
-    city.add_edges_from(list(zip([parada[0] for parada in parades], ox.distance.nearest_nodes(cruilles, X, Y, return_dist=False))))
+    #no tinc molt clar que el type sigui carrer, li podríem dir enllaç
+    city.add_edges_from(zip([parada[0] for parada in parades], ox.distance.nearest_nodes(cruilles, X, Y, return_dist=False)), type = "Carrer")
+
+
+def get_weight(a, b, attributes):
+    '''returns the minutes to travel between to adjacent nodes'''
+
+    dist = haversine(a['coord'], b['coord']) #km
+
+    #print(a, b, attributes)
+
+    if attributes['type'] == 'Carrer': #un carrer es travessa en línia recta
+        return dist/WALK_SPEED*60
+
+
+    elif attributes['type'] == 'Bus': #fem rotacio de 45º i calculem norma manhattan
+        '''
+        1/sqrt(2)  - 1/sqrt(2)
+        1/sqrt(2)   1/sqrt(2)
+        '''
+        a_x_rotat, a_y_rotat = 1/math.sqrt(2) * (a['coord'][0] - a['coord'][1]), 1/math.sqrt(2) * (a['coord'][0] + a['coord'][1])
+        b_x_rotat, b_y_rotat = 1/math.sqrt(2) * (b['coord'][0] -  b['coord'][1]), 1/math.sqrt(2) * (b['coord'][0] + b['coord'][1])
+
+        return (abs(a_x_rotat - b_x_rotat) + abs(a_y_rotat - b_y_rotat)) / BUS_SPEED * 60
+
+
+def add_weights(city: CityGraph):
+    for edge in city.edges(data = True):
+        edge[2]['weight'] = get_weight(city.nodes[edge[0]], city.nodes[edge[1]], edge[2])
 
 
 def build_city_graph(g1: OsmnxGraph, g2: BusesGraph) -> CityGraph:
@@ -109,6 +146,8 @@ def build_city_graph(g1: OsmnxGraph, g2: BusesGraph) -> CityGraph:
 
     join_parada_cruilla(city, g2, g1)
 
+    add_weights(city)
+
     return city
 
 
@@ -116,8 +155,13 @@ def find_path(ox_g: OsmnxGraph, g: CityGraph, src: Coord, dst: Coord) -> Path:
     #path llista ordenada de nodes?
 
     #ox.distance.nearest_nodes necessita coordenades girades
-
     cruilla_src, cruilla_dst = ox.distance.nearest_nodes(ox_g, [src[1], dst[1]], [src[0], dst[0]], return_dist=False)
+    #nodes_path: list[T] = nx.shortest_path(g, source = cruilla_src, target = cruilla_dst, weight = get_weight)
+    nodes_path: list[T] = nx.shortest_path(g, source = cruilla_src, target = cruilla_dst, weight = 'weight')
+
+    #print((nodes_path, nx.path_weight(g, nodes_path, 'weight')))
+    return (nodes_path, nx.path_weight(g, nodes_path, 'weight'))
+    #If the source and target are both specified, return a single list of nodes in a shortest path from the source to the target.
 
 
     #plot cruilles i posicio original
@@ -176,8 +220,35 @@ def plot(g: CityGraph, filename: str) -> None:
 
 
 def plot_path(g: CityGraph, p: Path, filename: str, *args) -> None:
-    pass
+    # desa g com una imatge amb el mapa de la ciutat de fons en l'arxiu filename
+    map = StaticMap(300, 300)
+
+    # draw nodes
+    for i, node in enumerate(p[0]):
+        print(g.nodes[node])
+
+        if g.nodes[node]['type'] == "Parada":
+            color = "red"
+
+        elif g.nodes[node]['type'] == "Cruilla":
+            color = "blue"
+
+        map.add_marker(CircleMarker((g.nodes[node]['coord'][1], g.nodes[node]['coord'][0]), color, 3))
+
+        if i != 0:
+            coord_1 = (g.nodes[node]['coord'][1], g.nodes[node]['coord'][0])
+            coord_2 = (g.nodes[p[0][i-1]]['coord'][1], g.nodes[p[0][i-1]]['coord'][0])
+            map.add_line(Line([coord_1, coord_2], "red", 2))
+
+
+
+    image = map.render()
+    image.save(filename)
     # mostra el camí p en l'arxiu filename
 
+osmx_g = get_osmnx_graph()
+city = build_city_graph(osmx_g, get_buses_graph())
+
+plot_path(city, find_path(osmx_g, city, (41, 2), (42, 2.5)), "hola.png")
 
 #find_path(get_osmnx_graph(), build_city_graph(get_osmnx_graph(), get_buses_graph()), (41.3860832,2.1627945), (41.4158589,2.1482698))
