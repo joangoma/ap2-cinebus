@@ -21,10 +21,6 @@ BUS_WAIT_TIME = 5 #minutes
 
 FILE_GRAPH_NAME = "graph"
 
-def delete_geometry_from_edges(g: OsmnxGraph) -> OsmnxGraph:
-    for u, v, key, geom in g.edges(data = "geometry", keys = True):
-        if geom is not None:
-            del(g[u][v][key]["geometry"])
 
 
 def get_only_first_edge_and_del_geometry(g: OsmnxGraph) -> OsmnxGraph:
@@ -56,16 +52,16 @@ def get_osmnx_graph() -> OsmnxGraph:
     else:
         g: OsmnxGraph = ox.graph_from_place("Barcelona", network_type='walk', simplify=True)
 
-        #Si voleu eliminar aquesta informació de totes les arestes (potser abans de guardar el graf en un fitxer) podeu fer:
-        #delete_geometry_from_edges(g)
-        for edge in g.edges:
+        for edge in g.edges(data = True):
             print(edge)
             break
 
+
         get_only_first_edge_and_del_geometry(g)
-        for edge in g.edges:
+        for edge in g.edges(data = True):
             print(edge)
             break
+
         save_osmnx_graph(g, FILE_GRAPH_NAME)
         return g
 
@@ -99,12 +95,9 @@ def join_parada_cruilla(city, buses, cruilles) -> None:
 def get_weight(a, b, attributes):
     '''returns the minutes to travel between to adjacent nodes'''
 
-    dist = haversine(a['coord'], b['coord']) #km
-
-    #print(a, b, attributes)
 
     if attributes['type'] == 'Carrer': #un carrer es travessa en línia recta
-        return dist/WALK_SPEED*60
+        return haversine(a['coord'], b['coord'])/WALK_SPEED*60
 
 
     elif attributes['type'] == 'Bus': #fem rotacio de 45º i calculem norma manhattan
@@ -151,20 +144,10 @@ def build_city_graph(g1: OsmnxGraph, g2: BusesGraph) -> CityGraph:
     return city
 
 
-def find_path(ox_g: OsmnxGraph, g: CityGraph, src: Coord, dst: Coord) -> Path:
-    #path llista ordenada de nodes?
+def find_path_delay():
 
-    #ox.distance.nearest_nodes necessita coordenades girades
     cruilla_src, cruilla_dst = ox.distance.nearest_nodes(ox_g, [src[1], dst[1]], [src[0], dst[0]], return_dist=False)
-    #nodes_path: list[T] = nx.shortest_path(g, source = cruilla_src, target = cruilla_dst, weight = get_weight)
-    nodes_path: list[T] = nx.shortest_path(g, source = cruilla_src, target = cruilla_dst, weight = 'weight')
 
-    #print((nodes_path, nx.path_weight(g, nodes_path, 'weight')))
-    return (nodes_path, nx.path_weight(g, nodes_path, 'weight'))
-    #If the source and target are both specified, return a single list of nodes in a shortest path from the source to the target.
-
-
-    #plot cruilles i posicio original
     '''
     h = nx.Graph()
     print(cruilles)
@@ -178,6 +161,21 @@ def find_path(ox_g: OsmnxGraph, g: CityGraph, src: Coord, dst: Coord) -> Path:
     plt.show()'''
 
     #hem de guardar la linia de bus de la que venim per si cal fer transbord.
+
+def find_path(ox_g: OsmnxGraph, g: CityGraph, src: Coord, dst: Coord) -> Path:
+    #path llista ordenada de nodes?
+
+    #ox.distance.nearest_nodes necessita coordenades girades
+    cruilla_src, cruilla_dst = ox.distance.nearest_nodes(ox_g, [src[1], dst[1]], [src[0], dst[0]], return_dist=False)
+    #nodes_path: list[T] = nx.shortest_path(g, source = cruilla_src, target = cruilla_dst, weight = get_weight)
+    nodes_path: list[T] = nx.shortest_path(g, source = cruilla_src, target = cruilla_dst, weight = 'weight')
+
+    #print((nodes_path, nx.path_weight(g, nodes_path, 'weight')))
+    return (nodes_path, nx.path_weight(g, nodes_path, 'weight'))
+    #If the source and target are both specified, return a single list of nodes in a shortest path from the source to the target.
+
+
+
 
 def show(g: CityGraph) -> None:
     # mostra g de forma interactiva en una finestra
@@ -238,7 +236,14 @@ def plot_path(g: CityGraph, p: Path, filename: str, *args) -> None:
         if i != 0:
             coord_1 = (g.nodes[node]['coord'][1], g.nodes[node]['coord'][0])
             coord_2 = (g.nodes[p[0][i-1]]['coord'][1], g.nodes[p[0][i-1]]['coord'][0])
-            map.add_line(Line([coord_1, coord_2], "red", 2))
+
+            #si un dels dos es cruilla --> a peu
+            if g.nodes[node]['type'] == "Cruilla" or g.nodes[p[0][i-1]]['type'] == "Cruilla":
+                color = "blue"
+            else:
+                color = "red"
+
+            map.add_line(Line([coord_1, coord_2], color, 2))
 
 
 
@@ -249,6 +254,6 @@ def plot_path(g: CityGraph, p: Path, filename: str, *args) -> None:
 osmx_g = get_osmnx_graph()
 city = build_city_graph(osmx_g, get_buses_graph())
 
-plot_path(city, find_path(osmx_g, city, (41, 2), (42, 2.5)), "hola.png")
+plot_path(city, find_path(osmx_g, city, (41.389351254678175, 2.1133217760069765), (41.38823241499941, 2.1171734282462022)), "path.png")
 
 #find_path(get_osmnx_graph(), build_city_graph(get_osmnx_graph(), get_buses_graph()), (41.3860832,2.1627945), (41.4158589,2.1482698))
