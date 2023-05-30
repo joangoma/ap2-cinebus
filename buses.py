@@ -1,113 +1,113 @@
-from typing import TypeAlias
-import networkx as nx
-import requests
 from dataclasses import dataclass
-from staticmap import StaticMap, CircleMarker, Line
+from typing import TypeAlias
 
 import matplotlib.pyplot as plt
+import networkx as nx
+import requests
+from staticmap import CircleMarker, Line, StaticMap
 
-
-Coord : TypeAlias = tuple[float, float]   # (latitude, longitude)
-BusesGraph : TypeAlias = nx.Graph
+Coord: TypeAlias = tuple[float, float]  # (latitude, longitude)
+BusesGraph: TypeAlias = nx.Graph
 
 URL = "https://www.ambmobilitat.cat/OpenData/ObtenirDadesAMB.json"
 
 
-@dataclass (frozen = True)
+@dataclass(frozen=True)
 class Parada:
     nom: str
     coord: Coord
 
 
 def get_data_from_url():
-    '''returns a dictionary of the buses data from the URL. The URL is a constant.'''
+    """returns a dictionary of the buses data from the URL. The URL is a constant."""
     response = requests.get(URL)
     assert response, "Error with URL"
     return response.json()
 
 
 def get_linies():
-    '''returns a list of bus lines'''
+    """returns a list of bus lines"""
     data = get_data_from_url()
     data = data[list(data.keys())[0]]
 
     linies = data[list(data.keys())[1]]
-    return linies[list(linies.keys())[0]] #llista de diccionaris
+    return linies[list(linies.keys())[0]]  # llista de diccionaris
 
-def get_weight():
-    return 10
 
 def get_buses_graph() -> BusesGraph:
-    '''downloads the data of the AMB and returns an undirected graph of buses'''
+    """downloads the data of the AMB and returns an undirected graph of buses"""
 
-    #nota: una linia comença i acaba amb la mateixa parada (pel que he vist en les tres primeres)
-    #nota2: he suposat que CodAMB és un identificador únic per a cada parada (poden haver parades diferents a pl cat per exemple)
-    #nota3: afegir un node preexistent no en modifica les arestes, la llibreria ho ignora
-    #nota4: ignorem les parades de fora de Barcelona
+    # nota: no totes les linies comencen i acaben amb la mateixa parada, pero per simplicitat hem considerat que totes ho son
+    # nota2: he suposat que CodAMB és un identificador únic per a cada parada (poden haver parades diferents a pl cat per exemple)
+    # nota3: afegir un node preexistent no en modifica les arestes, la llibreria ho ignora
+    # nota4: ignorem les parades de fora de Barcelona
 
-    '''
+    """
     maneres d'implementar els nodes:
     - node: id, nom, codi, adreça, coordenades
     - node: id, Parada(elements que vulguem)
     - node: Parada() -> per crear les arestes hauríem de fer una llista amb les parades i anar-les connectant
-    '''
-
+    """
 
     buses: BusesGraph = BusesGraph()
 
-    linies = get_linies() #llista de diccionaris
-
+    linies = get_linies()  # llista de diccionaris
 
     for linia in linies:
-        parades_linia = linia['Parades']['Parada'] #llista de diccionaris (parades duna mateixa línia)
+        parades_linia = linia["Parades"]["Parada"]  # llista de diccionaris (parades duna mateixa línia)
 
         for i, parada in enumerate(parades_linia):
-            if parada['Municipi'] == 'Barcelona':
+            if parada["Municipi"] == "Barcelona":
 
-                buses.add_node(parada['CodAMB'], nom = parada['Nom'], coord = (parada['UTM_X'], parada['UTM_Y']))
+                if parada["CodAMB"] not in buses.nodes:
+                    buses.add_node(parada["CodAMB"], nom=parada["Nom"], coord=(parada["UTM_X"], parada["UTM_Y"]), linies = [linia["Id"]])
+                else:
+                    buses[parada["CodAMB"]][linies].append(linia["Id"])
 
-                if i != 0 and parades_linia[i-1]['Municipi'] == 'Barcelona' and parada['CodAMB'] != parades_linia[i-1]['CodAMB']:
-                    if (parada['CodAMB'], parades_linia[i-1]['CodAMB']) in buses.edges:
-                        buses[parada['CodAMB']][parades_linia[i-1]['CodAMB']]['linies'].append(linia['Id'])
+                if (i != 0 and parades_linia[i - 1]["Municipi"] == "Barcelona"and parada["CodAMB"] != parades_linia[i - 1]["CodAMB"]):
+                    if (parada["CodAMB"], parades_linia[i - 1]["CodAMB"]) in buses.edges: #The EdgeView provides set-like operations on the edge-tuples as well as edge attribute lookup.
+                        buses[parada["CodAMB"]][parades_linia[i - 1]["CodAMB"]]["linies"].append(linia["Id"])
                     else:
-                        buses.add_edge(parada['CodAMB'], parades_linia[i-1]['CodAMB'], linies = [linia['Id']], pes = get_weight())
+                        buses.add_edge(parada["CodAMB"], parades_linia[i - 1]["CodAMB"], linies=[linia["Id"]])
 
     return buses
 
-
 def show(g: BusesGraph) -> None:
-    '''shows the graph interactively using network.draw'''
-    #nota: hi ha nodes no connexos pq pertanyen a linies dhospitalet, sant adria etc
+    """shows the graph interactively using network.draw"""
+    # nota: hi ha nodes no connexos pq pertanyen a linies dhospitalet, sant adria etc
 
     positions = nx.get_node_attributes(g, "coord")
-
-    #print(set(g.nodes) - {x[0] for x in g.edges} - {x[1] for x in g.edges}) nodes no connexos
-
-    nx.draw(g, pos=positions, with_labels = False, node_size=10)
+    nx.draw(g, pos=positions, with_labels = False, node_size = 10)
     plt.show()
 
 
 def plot(g: BusesGraph, nom_fitxer: str) -> None:
-    '''saves the graph as an image with the map of the city in the background
-    in the file nom_fitxer using staticmaps'''
-    url = "http://a.tile.osm.org/13/41.3968/2.1564.png"
-    url_ = "http://a.tile.osm.org/{z}/{x}/{y}.png"
-    url2 = "https://www.openstreetmap.org/relation/347950#map=13/41.3968/2.1564"
+    """saves the graph as an image with the map of the city in the background
+    in the file nom_fitxer using staticmaps"""
 
-    map = StaticMap(500, 500, url_template = url_)
+    map = StaticMap(300, 300)
 
-    #draw nodes
+    # draw nodes
     for pos in nx.get_node_attributes(g, "coord").values():
-        map.add_marker(CircleMarker(pos, 'green', 6))
+        map.add_marker(CircleMarker((pos[1], pos[0]), "green", 3))
 
-    #draw edges
+    # draw edges
     for edge in g.edges:
-        map.add_line(Line([g.nodes[edge[0]]['coord'], g.nodes[edge[1]]['coord']], 'blue', 3))
+        coord_1 = (g.nodes[edge[0]]["coord"][1], g.nodes[edge[0]]["coord"][0])
+        coord_2 = (g.nodes[edge[1]]["coord"][1], g.nodes[edge[1]]["coord"][0])
+        map.add_line(Line([coord_1, coord_2], "blue", 2))
 
     image = map.render()
     image.save(nom_fitxer)
 
 
+
 #show(get_buses_graph())
 #print(nx.complete_graph(5).nodes)
-#plot(get_buses_graph(), "hola.png")
+#print(set(g.nodes) - {x[0] for x in g.edges} - {x[1] for x in g.edges}) nodes no connexos
+
+# show(get_buses_graph())
+# print(nx.complete_graph(5).nodes)
+
+
+plot(get_buses_graph(), "buses_bcn_map.png")
