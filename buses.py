@@ -62,7 +62,7 @@ def get_buses_graph() -> BusesGraph:
                 if parada["CodAMB"] not in buses.nodes:
                     buses.add_node(parada["CodAMB"], nom=parada["Nom"], coord=(parada["UTM_X"], parada["UTM_Y"]), linies = [linia["Id"]])
                 else:
-                    buses[parada["CodAMB"]][linies].append(linia["Id"])
+                    buses.nodes[parada["CodAMB"]]['linies'].append(linia["Id"])
 
                 if (i != 0 and parades_linia[i - 1]["Municipi"] == "Barcelona"and parada["CodAMB"] != parades_linia[i - 1]["CodAMB"]):
                     if (parada["CodAMB"], parades_linia[i - 1]["CodAMB"]) in buses.edges: #The EdgeView provides set-like operations on the edge-tuples as well as edge attribute lookup.
