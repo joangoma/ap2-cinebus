@@ -5,6 +5,7 @@ import os
 import pickle
 from buses import *
 import math
+import heapq
 from haversine import haversine
 
 T = TypeVar("T")
@@ -81,6 +82,7 @@ def load_osmnx_graph(filename: str) -> OsmnxGraph:
     return pickle.load(pickle_in)
 
 
+
 def join_parada_cruilla(city, buses, cruilles) -> None:
     '''each stop is joined with the closest crosswalk'''
 
@@ -139,14 +141,130 @@ def build_city_graph(g1: OsmnxGraph, g2: BusesGraph) -> CityGraph:
 
     join_parada_cruilla(city, g2, g1)
 
-    add_weights(city)
+    add_weights(city) #com mes valors poguem tenir precalculats millor
 
     return city
 
+def pred_to_list(src, dst, pred):
+    nodes = []
+    while dst != src:
+        nodes.append(dst)
+        dst = pred[dst]
 
-def find_path_delay():
+    nodes.append(src)
+
+    return reversed(nodes)
+
+
+def find_path_delay_maco(g) -> Path:
+    '''requisits: els nodes de buses han de tenir una llista amb les parades'''
+    '''nota: g.neigbors nomes dona ids'''
+    cruilla_src, cruilla_dst = ox.distance.nearest_nodes(ox_g, [src[1], dst[1]], [src[0], dst[0]], return_dist=False)
+
+    cost = {node: float('inf') for node in g.nodes}
+    cost[cruilla_src] = 0
+    pred = {}
+    cuap: list[float, 'T', str | None] = [] #(time, node, linia actual)
+    used = {node: False for node in g.nodes}
+    heapq.heappush(cuap, (0, g.nodes[cruilla_src], None))
+
+    while pque:
+        cost, v, linia_actual = heapq.heappop(cuap)
+
+        if v[0] == cruilla_dst:
+            return
+
+        if v[1]['type'] == "Cruilla": #nomes cruilles pq he dexplorar totes les linies de les parades
+            if used[v[0]]:
+                continue
+            used[v[0]] = True
+
+        for nbor_id in g.neighbors(v[0]): #nomes tinc id
+            nbor = g.nodes[nbor_id]
+            edge = g.edges[v[0], nbor_id]
+
+            if nbor[1]['type'] == 'Cruilla' and cost[nbor_id] > cost[v[0]] + edge['weight']:
+                cost[nbor_id] = cost[v[0]] + edge['weight']
+                pred[nbor_id] = v[0]
+                heapq.heappush(cuap, (cost[nbor_id], nbor, None))
+
+
+            elif nbor[1]['type'] == 'Parada':
+                if linia_actual is None or linia_actual not in nbor[1]['linies']: #sumo delay i exploro totes les linies
+                    if cost[nbor_id] > cost[v[0]] + edge['weight'] + BUS_WAIT_TIME:
+                        cost[nbor_id] = cost[v[0]] + edge['weight'] + BUS_WAIT_TIME
+                        pred[nbor_id] = v[0]
+
+                        for linia in nbor[1]['linies']: #he dexplorar la resta de linies
+                            heapq.heappush(cuap, (cost[nbor_id], nbor, linia))
+
+                elif cost[nbor_id] > cost[v[0]] + edge['weight']:
+                    cost[nbor_id] = cost[v[0]] + edge['weight']
+                    pred[nbor_id] = v[0]
+                    heapq.heappush(cuap, (cost[nbor_id], nbor, linia_actual))
+                    #agafem totes les línies
+
+
+    return (pred_to_list(cruilla_src, cruilla_dst, pred), cost[cruilla_dst])
+
+
+def find_path_delay(g):
+    '''requisit: cal que els nodes parada tinguin les línies.'''
 
     cruilla_src, cruilla_dst = ox.distance.nearest_nodes(ox_g, [src[1], dst[1]], [src[0], dst[0]], return_dist=False)
+
+    dist = {node: float('inf') for node in g.nodes}
+    dist[cruilla_src] = 0
+
+    #idea 1: posposar el transbord el màxim possibles (problema: potser si haguessim fet un transbord al principi podriem haver estalviat molt temps
+
+    #idea 2: provar cada linia per separat
+
+    #idea 3: utilitzar una heurística. No anar a cap node amb un cost estimat molt pitjor que l'actual
+
+    #escollir les linies seria una mena de greedy on intentem seguir en una mateixa linia el maxim possible
+
+    prev = {} #pare, set de possibles linies que ens poden portar fins a la key (interseccio de sets)
+    pending: list = [] #(time, node, linia)
+
+    heapq.heappush(pending, (0, cruilla_src))
+
+
+    while pending:
+        current = heapq.heappop(pending)[1]
+        if current == cruilla_dst:
+            return dist[cruilla_dst]
+
+
+        for nbor in g.neighbors(current):
+            edge = g.edges[nbor, current]
+
+            if nbor['type'] == "Parada":
+
+                if g.nodes[current]['type'] == "Cruilla" or not prev[current] & set(nbor['linies']):
+                #veniem duna cruilla o duna parad on cap linia coincideix
+                    if dist[nbor] > dist[current] + edge['weight'] + BUS_WAIT_TIME:
+                        dist[nbor] = dist[current] + edge['weight'] + BUS_WAIT_TIME
+                        prev = (current, set(nbor['linies']))
+                        heapq.heappush(pending, (dist[nbor], nbor))
+                        #sumem BUS_WAIT_TIME
+                        #prev = linies parada (nbor)
+
+                else: #veniem duna parada duna mateixa linia/linies
+                    if dist[nbor] > dist[current] + edge['weight']:
+                        dist[nbor] = dist[current] + edge['weight']
+                        prev = (current, set(nbor['linies']) & prev[current])
+                        heapq.heappush(pending, (dist[nbor], nbor))
+                        #no sumem BUS_WAIT_TIME
+                        #prev interseccio prev & nbor
+
+
+            elif dist[nbor] > dist[current] + edge['weight']:
+                dist[nbor] = dist[current] + edge['weight']
+                prev[nbor] = (current, None)
+                heapq.heappush(pending, (dist[nbor], nbor))
+
+    return dist[nbor] #no cal pq sempre es retornara algo
 
     '''
     h = nx.Graph()
@@ -167,6 +285,8 @@ def find_path(ox_g: OsmnxGraph, g: CityGraph, src: Coord, dst: Coord) -> Path:
 
     #ox.distance.nearest_nodes necessita coordenades girades
     cruilla_src, cruilla_dst = ox.distance.nearest_nodes(ox_g, [src[1], dst[1]], [src[0], dst[0]], return_dist=False)
+    #retorna nomes ids dels nodes
+
     #nodes_path: list[T] = nx.shortest_path(g, source = cruilla_src, target = cruilla_dst, weight = get_weight)
     nodes_path: list[T] = nx.shortest_path(g, source = cruilla_src, target = cruilla_dst, weight = 'weight')
 
@@ -251,9 +371,17 @@ def plot_path(g: CityGraph, p: Path, filename: str, *args) -> None:
     image.save(filename)
     # mostra el camí p en l'arxiu filename
 
-osmx_g = get_osmnx_graph()
-city = build_city_graph(osmx_g, get_buses_graph())
 
-plot_path(city, find_path(osmx_g, city, (41.389351254678175, 2.1133217760069765), (41.38823241499941, 2.1171734282462022)), "path.png")
 
-#find_path(get_osmnx_graph(), build_city_graph(get_osmnx_graph(), get_buses_graph()), (41.3860832,2.1627945), (41.4158589,2.1482698))
+'''g = nx.Graph()
+g.add_node(1, type="d")
+g.add_node(2, type="ss")
+g.add_edge(1,2)'''
+
+
+#osmx_g = get_osmnx_graph()
+#city = build_city_graph(osmx_g, get_buses_graph())
+
+#plot_path(city, find_path(osmx_g, city, (41.389351254678175, 2.1133217760069765), (41.38823241499941, 2.1171734282462022)), "path.png")
+
+find_path(get_osmnx_graph(), build_city_graph(get_osmnx_graph(), get_buses_graph()), (41.3860832,2.1627945), (41.4158589,2.1482698))
