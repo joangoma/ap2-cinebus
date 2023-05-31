@@ -7,6 +7,7 @@ from buses import *
 import math
 import heapq
 from haversine import haversine
+from random import randint
 
 T = TypeVar("T")
 
@@ -142,14 +143,19 @@ def build_city_graph(g1: OsmnxGraph, g2: BusesGraph) -> CityGraph:
 
 
 def pred_to_list(src, dst, pred):
-    nodes = []
-    while dst != src:
-        nodes.append(dst)
-        dst = pred[dst]
+    '''pred es dict de tuples'''
+    nodes_and_linies = []
+    dst = (dst, None)
+    src = (src, None)
 
-    nodes.append(src)
-    nodes.reverse()
-    return nodes
+    while dst[0] != src[0]:
+        nodes_and_linies.append(dst)
+        dst = pred[dst[0]]
+
+    nodes_and_linies.append(src)
+    nodes_and_linies.reverse()
+    print(nodes_and_linies)
+    return nodes_and_linies
 
 
 def find_path_delay(ox_g: OsmnxGraph, g: CityGraph, src: Coord, dst: Coord) -> Path:
@@ -183,21 +189,21 @@ def find_path_delay(ox_g: OsmnxGraph, g: CityGraph, src: Coord, dst: Coord) -> P
 
             if nbor['type'] == 'Cruilla' and cost[nbor_id] > cost[v[0]] + edge['weight']:
                 cost[nbor_id] = cost[v[0]] + edge['weight']
-                pred[nbor_id] = v[0]
+                pred[nbor_id] = (v[0], None)
                 heapq.heappush(cuap, (cost[nbor_id], (nbor_id, nbor), None))
 
             elif nbor['type'] == 'Parada': #this condition is not indispensable but perhaps in a future more types of nodes are added
                 if linia_actual is None or linia_actual not in nbor['linies']: #sumo delay i exploro totes les linies
                     if cost[nbor_id] > cost[v[0]] + edge['weight'] + BUS_WAIT_TIME:
                         cost[nbor_id] = cost[v[0]] + edge['weight'] + BUS_WAIT_TIME
-                        pred[nbor_id] = v[0]
+                        pred[nbor_id] = (v[0], linia_actual)
 
                         for linia in nbor['linies']: #he dexplorar la resta de linies
                             heapq.heappush(cuap, (cost[nbor_id], (nbor_id, nbor), linia))
 
                 elif cost[nbor_id] > cost[v[0]] + edge['weight']:
                     cost[nbor_id] = cost[v[0]] + edge['weight']
-                    pred[nbor_id] = v[0]
+                    pred[nbor_id] = (v[0], linia_actual)
                     heapq.heappush(cuap, (cost[nbor_id], (nbor_id, nbor), linia_actual))
 
     return (pred_to_list(cruilla_src, cruilla_dst, pred), int(cost[cruilla_dst]))
@@ -256,13 +262,24 @@ def plot(g: CityGraph, filename: str) -> None:
     image.save(filename)
 
 
+def get_colors_from_path(p: Path) -> set[str]:
+
+
+    linies = {item[1] for item in p[0]} #p[0] es una llista
+
+    return {linia: (randint(0, 255), randint(0,255), randint(0,255)) for linia in linies}
+
+
 def plot_path(g: CityGraph, p: Path, filename: str, *args) -> None:
     '''mostra el camí p en l'arxiu filename. desa g com una imatge amb el mapa de la ciutat de fons en l'arxiu filename'''
 
     map = StaticMap(300, 300)
 
+    colors_linies: dict[str | int, tuple[int, int, int]] = get_colors_from_path(p)
+
+
     # draw nodes
-    for i, node in enumerate(p[0]):
+    for i, (node, linia) in enumerate(p[0]):
 
         if g.nodes[node]['type'] == "Parada":
             color = "red"
@@ -272,15 +289,17 @@ def plot_path(g: CityGraph, p: Path, filename: str, *args) -> None:
 
         map.add_marker(CircleMarker((g.nodes[node]['coord'][1], g.nodes[node]['coord'][0]), color, 3))
 
-        if i != 0:
+        if i != 0: #draw edges
             coord_1 = (g.nodes[node]['coord'][1], g.nodes[node]['coord'][0])
-            coord_2 = (g.nodes[p[0][i-1]]['coord'][1], g.nodes[p[0][i-1]]['coord'][0])
+            coord_2 = (g.nodes[p[0][i-1][0]]['coord'][1], g.nodes[p[0][i-1][0]]['coord'][0])
 
             #si un dels dos es cruilla s'ha d'anar a peu
-            if g.nodes[node]['type'] == "Cruilla" or g.nodes[p[0][i-1]]['type'] == "Cruilla":
+
+            if g.nodes[node]['type'] == "Cruilla" or g.nodes[p[0][i-1][0]]['type'] == "Cruilla":
                 color = "blue"
             else:
-                color = "red"
+                color = colors_linies[linia]
+
 
             map.add_line(Line([coord_1, coord_2], color, 2))
 
