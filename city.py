@@ -88,6 +88,7 @@ def join_parada_cruilla(city, buses, cruilles) -> None:
 
 
 def get_weight(a, b, attr):
+    '''Used to estimate the time taken to go from one bus stop to another.'''
     return attr['weight'] * WALK_SPEED / BUS_SPEED
 
 
