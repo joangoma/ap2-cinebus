@@ -97,8 +97,8 @@ def show_buses_graph() -> None:
     buses.show(buses.get_buses_graph())
 
 
-# def show_city_graph() -> None:
-#     city.show(city.get_city_graph())
+def show_city_graph(g: CityGraph) -> None:
+    show(g)
 
 
 def show_film_titles(
@@ -279,11 +279,11 @@ def handle_input(
     elif key == "3":
         show_buses_graph()
     elif key == "4":
-        ...
+        show_city_graph(city_g)
     elif key == "5":
         search_closest_cinema(billboard, osmx_g, city_g)
 
-    Prompt.ask("\nPress any key to return to the main page")
+    Prompt.ask("\nPress enter to return to the main page")
 
 
 def main() -> None:
