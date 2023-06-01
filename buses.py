@@ -12,7 +12,6 @@ BusesGraph: TypeAlias = nx.Graph
 URL = "https://www.ambmobilitat.cat/OpenData/ObtenirDadesAMB.json"
 
 
-
 def get_data_from_url():
     """returns a dictionary of the buses data from the URL. The URL is a constant."""
     response = requests.get(URL)
@@ -38,23 +37,37 @@ def get_buses_graph() -> BusesGraph:
     # nota4: ignorem les parades de fora de Barcelona
     # nota5: les subparades duna mateixa parada encara no estan unides entre si
 
-
     buses: BusesGraph = BusesGraph()
 
     linies = get_linies()  # llista de diccionaris
 
     for linia in linies:
-        parades_linia = linia["Parades"]["Parada"]  # llista de diccionaris (parades duna mateixa línia)
+        parades_linia = linia["Parades"][
+            "Parada"
+        ]  # llista de diccionaris (parades duna mateixa línia)
 
         for i, parada in enumerate(parades_linia):
             if parada["Municipi"] == "Barcelona":
-
-                buses.add_node(parada["CodAMB"] + "-" +linia['Nom'], nom=parada["Nom"], coord=(parada["UTM_X"], parada["UTM_Y"]), linia = linia["Nom"])
+                buses.add_node(
+                    parada["CodAMB"] + "-" + linia["Nom"],
+                    nom=parada["Nom"],
+                    coord=(parada["UTM_X"], parada["UTM_Y"]),
+                    linia=linia["Nom"],
+                )
 
                 prev_parada = parades_linia[i - 1]
 
-                if (i != 0 and prev_parada["Municipi"] == "Barcelona"and parada["CodAMB"] + "-" + linia["Nom"] != prev_parada["CodAMB"] + "-" + linia["Nom"]):
-                    buses.add_edge(parada["CodAMB"]+ "-" + linia['Nom'], prev_parada["CodAMB"] + "-" + linia['Nom'], linia=linia["Nom"])
+                if (
+                    i != 0
+                    and prev_parada["Municipi"] == "Barcelona"
+                    and parada["CodAMB"] + "-" + linia["Nom"]
+                    != prev_parada["CodAMB"] + "-" + linia["Nom"]
+                ):
+                    buses.add_edge(
+                        parada["CodAMB"] + "-" + linia["Nom"],
+                        prev_parada["CodAMB"] + "-" + linia["Nom"],
+                        linia=linia["Nom"],
+                    )
 
     return buses
 
@@ -64,7 +77,7 @@ def show(g: BusesGraph) -> None:
     # nota: hi ha nodes no connexos pq pertanyen a linies dhospitalet, sant adria etc
 
     positions = nx.get_node_attributes(g, "coord")
-    nx.draw(g, pos=positions, with_labels = False, node_size = 10)
+    nx.draw(g, pos=positions, with_labels=False, node_size=10)
     plt.show()
 
 
