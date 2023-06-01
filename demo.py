@@ -42,30 +42,6 @@ def draw_menu():
     )
 
 
-def show_billboard(billboard: Billboard) -> None:
-    """Shows the billboard info in a table format."""
-
-    table = Table(show_header=True, header_style="bold magenta")
-    table.add_column("Cinema", justify="left")
-    table.add_column("Pel·lícula")
-    table.add_column("Durada")
-    table.add_column("Horari")
-
-    time = 18
-    for i, projection in enumerate(sorted(billboard.projections, key=lambda x: x.time)):
-        table.add_row(
-            projection.cinema.name,
-            projection.film.title,
-            str(projection.duration),
-            "{:<02d}".format(projection.time[0])
-            + ":"
-            + "{:<02d}".format(projection.time[1]),
-        )
-
-    console.print("\nCartellera en horari no decreixent:\n")
-    console.print(table)
-
-
 def show_projections(projections: list[Projection]) -> None:
     """Show a set of films to the user"""
 
@@ -105,16 +81,13 @@ def search_billboard(billboard: Billboard) -> None:
         projections = billboard.search_projection_by_word(word)
 
     if key == "starting time":
-        start_time = Prompt.ask(
-            "Introdueixi a partir de quina hora vol anar a veure la pel·lícula (ex: 12:30))"
+        hour, minute = get_valid_time(
+            "Introduce at which time do you want to see the film."
         )
-        hour, minute = start_time.split(":")
-        projections = billboard.search_projection_by_time((int(hour), int(minute)))
+        projections = billboard.search_projection_by_time((hour, minute))
 
     if key == "duration":
-        durada = int(
-            Prompt.ask("Introdueixi la durada que vol que duri la seva pel·lícula")
-        )
+        durada = get_valid_duration()
         projections = billboard.search_projection_by_duration(durada)
 
     show_projections(projections)
@@ -133,21 +106,32 @@ def show_film_titles(
 ) -> None:
     for title in billboard.films_titles:
         console.print(title.capitalize())
-    Prompt.ask("\nPress any key to continue...")
+    Prompt.ask("\nPress enter to continue...")
     search_closest_cinema(billboard, osmx_g, city_g)
+
+
+def get_valid_duration() -> int:
+    try:
+        durada = int(
+            Prompt.ask("Introdueixi la durada que vol que duri la seva pel·lícula")
+        )
+        return durada
+    except:
+        return get_valid_duration()
 
 
 def get_valid_film_title(billboard: Billboard) -> str | None:
     film = Prompt.ask("Introduce the film you want to see")
+
     if film.lower() not in billboard.films_titles:
-        Prompt.ask("This film does not exist, press any key to continue")
+        Prompt.ask("This film does not exist, press enter to continue")
         console.clear()
         return None
 
     return film
 
 
-def get_valid_coordinates() -> Coord | None:
+def get_valid_coordinates() -> Coord:
     """Asks the user their current and, if it's well introduced, it returns it."""
 
     ubi = Prompt.ask(
@@ -160,19 +144,19 @@ def get_valid_coordinates() -> Coord | None:
         return lat, long
 
     except:
-        Prompt.ask("Please, enter the correct format, press any key to continue")
-        return None
+        Prompt.ask("Please, enter the correct format, press enter to continue")
+        return get_valid_coordinates()
 
 
-def get_valid_leaving_time() -> tuple[int, int] | None:
-    leave_time = Prompt.ask("Introduce the time you want to leave, ex: 19:30")
+def get_valid_time(question: str) -> tuple[int, int] | None:
+    leave_time = Prompt.ask("{0}, ex: 19:30".format(question))
     try:
         hour, minute = leave_time.split(":")
         leaving_time: tuple[int, int] = (int(hour), int(minute))
         return leaving_time
     except:
-        Prompt.ask("Please, enter the correct format, press any key to continue")
-        return None
+        Prompt.ask("Please, enter the correct format, press enter to continue")
+        return get_valid_time(question)
 
 
 def find_valid_projections(
@@ -183,31 +167,29 @@ def find_valid_projections(
 
     film = get_valid_film_title(billboard)
     if film == None:
-        search_closest_cinema(billboard, osmx_g, city_g)
+        return None
+    else:
+        starting_coord: Coord = get_valid_coordinates()
 
-    starting_coord: Coord = get_valid_coordinates()
-    if starting_coord == None:
-        search_closest_cinema(billboard, osmx_g, city_g)
-
-    leaving_time: tuple[int, int] = get_valid_leaving_time()
-    if leaving_time == None:
-        search_closest_cinema(billboard, osmx_g, city_g)
-
-    projections = billboard.search_projection_by_time(leaving_time)
-
-    valid_projections: list[tuple[Projection, Path]] = list()
-
-    for projection in projections:
-        if projection.film.title.lower() != film:
-            continue
-
-        path = find_path(
-            osmx_g, city_g, starting_coord, cinemas_location[projection.cinema.name]
+        leaving_time: tuple[int, int] = get_valid_time(
+            "At which time you want to leave?"
         )
-        if path[1] <= calculate_time(leaving_time, projection.time):
-            valid_projections.append((projection, path))
 
-    return valid_projections
+        projections = billboard.search_projection_by_time(leaving_time)
+
+        valid_projections: list[tuple[Projection, Path]] = list()
+
+        for projection in projections:
+            if projection.film.title.lower() != film:
+                continue
+
+            path = find_path(
+                osmx_g, city_g, starting_coord, cinemas_location[projection.cinema.name]
+            )
+            if path[1] <= calculate_time(leaving_time, projection.time):
+                valid_projections.append((projection, path))
+
+        return valid_projections
 
 
 def show_find_closest_cinema_menu() -> None:
@@ -257,23 +239,29 @@ def search_closest_cinema(
         show_film_titles(billboard, osmx_g, city_g)
 
     elif key == "2":
-        valid_projections: list[tuple[Projection, Path]] = find_valid_projections(
-            billboard, osmx_g, city_g
-        )
+        valid_projections: list[
+            tuple[Projection, Path]
+        ] | None = find_valid_projections(billboard, osmx_g, city_g)
 
-        if len(valid_projections) == 0:
+        # Wrong title
+        if valid_projections == None:
+            search_closest_cinema(billboard, osmx_g, city_g)
+
+        # No matching projections
+        elif len(valid_projections) == 0:
             Prompt.ask(
                 "Sorry, there are no projections available given this constraints"
             )
             search_closest_cinema(billboard, osmx_g, city_g)
 
-        valid_projections.sort(key=lambda p: p[1][1])
+        else:
+            valid_projections.sort(key=lambda p: p[1][1])
 
-        show_projections_path_info(valid_projections)
+            show_projections_path_info(valid_projections)
 
-        num_projection = int(Prompt.ask("Choose the projection that you like!"))
+            num_projection = int(Prompt.ask("Choose the projection that you like!"))
 
-        plot_path(city_g, valid_projections[num_projection - 1][1], "path.png")
+            plot_path(city_g, valid_projections[num_projection - 1][1], "path.png")
 
     else:
         draw_menu()
@@ -285,7 +273,7 @@ def handle_input(
     """Function that handles user input."""
 
     if key == "1":
-        show_billboard(billboard)
+        show_projections(billboard.projections)
     elif key == "2":
         search_billboard(billboard)
     elif key == "3":
