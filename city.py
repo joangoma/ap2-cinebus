@@ -272,9 +272,7 @@ def plot_path(g: CityGraph, p: Path, filename: str, *args) -> None:
 
 
 osmx_g = get_osmnx_graph()
-for node in osmx_g.nodes:
-    print(type(node))
-    break
+
 city = build_city_graph(osmx_g, get_buses_graph())
 
 plot_path(city, find_path(osmx_g, city, (41.37949301243075, 2.121040855869357), (41.360067, 2.138944)), "path_delay.png")
