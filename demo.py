@@ -135,7 +135,7 @@ def get_valid_coordinates() -> Coord:
     """Asks the user their current and, if it's well introduced, it returns it."""
 
     ubi = Prompt.ask(
-        "Introduce your location (latitude, longitude) ex: 41.38173, 2.12550"
+        "Introduce your location (latitude, longitude) ex: 41.38181326442563, 2.12272545696498"
     )
 
     try:
@@ -213,12 +213,14 @@ def show_projections_path_info(
     table = Table(show_header=True, header_style="bold magenta")
     table.add_column("Num")
     table.add_column("Cinema", justify="left")
+    table.add_column("Projection time")
     table.add_column("Time to get there")
 
     for i, (projection, path) in enumerate(valid_projections):
         table.add_row(
             str(i + 1),
             projection.cinema.name,
+            "starts at {0}:{1}".format(projection.time[0], projection.time[1]),
             "{0} minutes".format(str(round(path[1], 1))),
         )
 
