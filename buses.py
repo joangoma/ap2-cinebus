@@ -64,11 +64,13 @@ def get_buses_graph() -> BusesGraph:
                 else:
                     buses.nodes[parada["CodAMB"]]['linies'].append(linia["Id"])
 
-                if (i != 0 and parades_linia[i - 1]["Municipi"] == "Barcelona"and parada["CodAMB"] != parades_linia[i - 1]["CodAMB"]):
-                    if (parada["CodAMB"], parades_linia[i - 1]["CodAMB"]) in buses.edges: #The EdgeView provides set-like operations on the edge-tuples as well as edge attribute lookup.
-                        buses[parada["CodAMB"]][parades_linia[i - 1]["CodAMB"]]["linies"].append(linia["Id"])
+                prev_parada = parades_linia[i - 1]
+
+                if (i != 0 and prev_parada["Municipi"] == "Barcelona"and parada["CodAMB"] != prev_parada["CodAMB"]):
+                    if (parada["CodAMB"], prev_parada["CodAMB"]) in buses.edges: #The EdgeView provides set-like operations on the edge-tuples as well as edge attribute lookup.
+                        buses[parada["CodAMB"]][prev_parada["CodAMB"]]["linies"].append(linia["Id"])
                     else:
-                        buses.add_edge(parada["CodAMB"], parades_linia[i - 1]["CodAMB"], linies=[linia["Id"]])
+                        buses.add_edge(parada["CodAMB"], prev_parada["CodAMB"], linies=[linia["Id"]])
 
     return buses
 

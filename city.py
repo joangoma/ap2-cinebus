@@ -8,6 +8,7 @@ import math
 import heapq
 from haversine import haversine
 from random import randint
+import itertools
 
 T = TypeVar("T")
 
@@ -19,10 +20,10 @@ Path: TypeAlias = tuple[list[T], int]
 WALK_SPEED = 5 #km/h
 BUS_SPEED = 15 #km/h
 
-BUS_WAIT_TIME = 8 #minutes
+BUS_WAIT_TIME = 8.0 #minutes
 
-FILE_GRAPH_NAME = "OSMNX_GRAPH"
-
+FILE_OSMNX_NAME = "OSMNX_GRAPH"
+FILE_CITY_NAME = "CITY_GRAPH"
 
 
 def get_only_first_edge_and_del_geometry(g: OsmnxGraph) -> OsmnxGraph:
@@ -48,19 +49,19 @@ ox.distance.nearest_nodes -> 2, 41 LON - LAT
 
 def get_osmnx_graph() -> OsmnxGraph:
     '''Returns a graph of the streets of Barcelona. Get_only_first_edge should be debugged'''
-    path = os.getcwd() + '\\' + FILE_GRAPH_NAME
+    path = os.getcwd() + '\\' + FILE_OSMNX_NAME
     if os.path.exists(path):
-        return load_osmnx_graph(FILE_GRAPH_NAME)
+        return load_graph(FILE_OSMNX_NAME)
     else:
         g: OsmnxGraph = ox.graph_from_place("Barcelona", network_type='walk', simplify=True)
 
         get_only_first_edge_and_del_geometry(g)
 
-        save_osmnx_graph(g, FILE_GRAPH_NAME)
+        save_graph(g, FILE_OSMNX_NAME)
         return g
 
 
-def save_osmnx_graph(g: OsmnxGraph, filename: str) -> None:
+def save_graph(g: OsmnxGraph, filename: str) -> None:
     '''Saves multigraph g in file {filename}'''
 
     pickle_out = open(filename, "wb")
@@ -68,7 +69,7 @@ def save_osmnx_graph(g: OsmnxGraph, filename: str) -> None:
     pickle_out.close()
 
 
-def load_osmnx_graph(filename: str) -> OsmnxGraph:
+def load_graph(filename: str) -> OsmnxGraph | CityGraph:
     '''Returns the multigraph stored in file filename'''
 
     pickle_in = open(filename, "rb")
@@ -86,28 +87,59 @@ def join_parada_cruilla(city, buses, cruilles) -> None:
     city.add_edges_from(zip([parada[0] for parada in parades], ox.distance.nearest_nodes(cruilles, X, Y, return_dist=False)), type = "Carrer")
 
 
-def get_weight(a, b, attributes):
-    '''Returns the minutes to travel between to adjacent nodes'''
-
-
-    if attributes['type'] == 'Carrer': #un carrer es travessa en línia recta
-        return haversine(a['coord'], b['coord'])/WALK_SPEED*60
-
-
-    elif attributes['type'] == 'Bus': #fem rotacio de 45º i calculem norma manhattan
-        '''
-        1/sqrt(2)  - 1/sqrt(2)
-        1/sqrt(2)   1/sqrt(2)
-        '''
-        a_x_rotat, a_y_rotat = 1/math.sqrt(2) * (a['coord'][0] - a['coord'][1]), 1/math.sqrt(2) * (a['coord'][0] + a['coord'][1])
-        b_x_rotat, b_y_rotat = 1/math.sqrt(2) * (b['coord'][0] -  b['coord'][1]), 1/math.sqrt(2) * (b['coord'][0] + b['coord'][1])
-
-        return (abs(a_x_rotat - b_x_rotat) + abs(a_y_rotat - b_y_rotat)) / BUS_SPEED * 60
+def get_weight(a, b, attr):
+    return attr['weight'] * WALK_SPEED / BUS_SPEED
 
 
 def add_weights(city: CityGraph) -> None:
+    '''Per calcular la distancia entre parades necessito distancia entre cruilles'''
     for edge in city.edges(data = True):
-        edge[2]['weight'] = get_weight(city.nodes[edge[0]], city.nodes[edge[1]], edge[2])
+        if edge[2]['type'] == 'Carrer':
+            #haversine retorna distancia en km
+            city.edges[edge[0], edge[1]]['weight'] = haversine(city.nodes[edge[0]]['coord'], city.nodes[edge[1]]['coord'])/WALK_SPEED*60
+
+    for edge in city.edges(data = True):
+        if edge[2]['type'] == 'Bus':
+            #aconsegueixo la cruilla mes propera al bus (de tots els edges de la parada es lunic del tipus carrer)
+            cruilla1 = list(filter(lambda edge_parada: edge_parada[2]['type'] == "Carrer", city.edges(edge[0], data = True)))[0][1]
+            cruilla2 = list(filter(lambda edge_parada: edge_parada[2]['type'] == "Carrer", city.edges(edge[1], data = True)))[0][1]
+
+            city.edges[edge[0], edge[1]]['weight'] = nx.shortest_path_length(city, source = cruilla1, target = cruilla2, weight= get_weight)
+
+
+def split_parades(city, buses):
+    '''
+    NECESSITO SABER ELS WEIGHTS!!
+
+    parada1-liniaA i parada1-liniaB tenen weight = delay
+    parada1-liniaA i parada2-liniaA tenen weight = distancia
+
+
+    NO hi ha una aresta entre parada1-liniaA i parada2-liniaB
+    '''
+    #creo una subparada per cada línia. Entre subparades a partir una mateixa parada el pes es el temps despera
+    for parada in buses.nodes(data = True):
+        subparades = [(str(parada[0]) + str(linia), {"nom": parada[1]['nom'], "linia": linia, "type": "Parada", "coord": parada[1]['coord']}) for linia in parada[1]['linies']]
+        city.add_nodes_from(subparades)
+        city.add_edges_from(itertools.combinations([subparada[0] for subparada in subparades], 2), weight = BUS_WAIT_TIME)
+
+
+    #uneixo les parades d'una mateixa línia (ja tenien el weight definit)
+    for edge in buses.edges(data = True):
+        for linia in edge[2]['linies']:
+            city.add_edge(str(edge[0]) + str(linia), str(edge[1]) + str(linia), weight = city.edges[edge[0], edge[1]]['weight'], type = "Bus")
+
+
+    #uneixo cada subparada amb la cruilla mes propera (cada parada ja esta unida amb una cruilla)
+    #nomes he de buscar l'edge de parada del tipus carrer
+    for parada in buses.nodes(data = True):
+        nearest_cruilla_edge = list(filter(lambda edge: edge[2]['type'] == "Carrer" , city.edges(parada[0], data = True)))[0]
+        for linia in parada[1]['linies']:
+            city.add_edge(nearest_cruilla_edge[1], str(parada[0]) + str(linia), weight = nearest_cruilla_edge[2]['weight'], type = "Carrer")
+
+
+    #elimino les parades originals (nomes volem subparades per calcular paths)
+    city.remove_nodes_from(buses.nodes)
 
 
 def build_city_graph(g1: OsmnxGraph, g2: BusesGraph) -> CityGraph:
@@ -123,23 +155,123 @@ def build_city_graph(g1: OsmnxGraph, g2: BusesGraph) -> CityGraph:
     for node in g1.nodes(data = True):
         city.add_node(node[0], coord = (node[1]['y'], node[1]['x']), type = "Cruilla")
 
-
     #nodes g2:
     city.add_nodes_from(g2.nodes(data = True), type = "Parada")
 
     #arestes g1:
     for edge in g1.edges(data = True):
         if edge[0] != edge[1]: #hi havia loops a city
-            city.add_edge(edge[0], edge[1], name = edge[2].get('name', None), type = "Carrer")
+            city.add_edge(edge[0], edge[1], name = edge[2].get('name', None), type = "Carrer", weight = float('inf'))
 
     #arestes g2:
-    city.add_edges_from(g2.edges(data = True), type = "Bus") #conservem totes les dades
+    city.add_edges_from(g2.edges(data = True), type = "Bus", weight = float('inf')) #conservem totes les dades
 
     join_parada_cruilla(city, g2, g1)
 
     add_weights(city) #com mes valors poguem tenir precalculats millor
 
+    split_parades(city, g2) #necessito els weights
+
     return city
+
+
+def find_path(ox_g: OsmnxGraph, g: CityGraph, src: Coord, dst: Coord) -> Path:
+    '''nota: ox.distance.nearest_nodes necessita coordenades girades
+        shortest_path: If the source and target are both specified, return a single list of nodes in a shortest path from the source to the target.
+    '''
+
+    cruilla_src, cruilla_dst = ox.distance.nearest_nodes(ox_g, [src[1], dst[1]], [src[0], dst[0]], return_dist=False)
+
+    #tots els edges tenen pes
+    nodes_path: list[T] = nx.shortest_path(g, source = cruilla_src, target = cruilla_dst, weight = 'weight')
+
+    return (nodes_path, nx.path_weight(g, nodes_path, 'weight'))
+
+
+def show(g: CityGraph) -> None:
+    '''mostra g de forma interactiva en una finestra
+    shows the graph interactively using network.draw'''
+
+    positions = nx.get_node_attributes(g, "coord")
+    nx.draw(g, pos=positions, with_labels = False, node_size=10)
+    plt.show()
+
+
+def plot(g: CityGraph, filename: str) -> None:
+    '''desa g com una imatge amb el mapa de la ciutat de fons en l'arxiu filename'''
+
+    map = StaticMap(300, 300)
+
+    # draw nodes
+    for node in g.nodes(data = True):
+        if node[1]['type'] == "Parada":
+            color = "red"
+
+        elif node[1]['type'] == "Cruilla":
+            color = "blue"
+
+        map.add_marker(CircleMarker(g[1]['coord'], color, 3))
+
+    # draw edges
+    for edge in g.edges(data = True):
+        if edge[2]['type'] == "Carrer":
+            color = 'orange'
+
+        elif edge[2]['type'] == "Bus":
+            color = "green"
+
+        #we swap the components
+        coord_1 = (g.nodes[edge[0]]["coord"][1], g.nodes[edge[0]]["coord"][0])
+        coord_2 = (g.nodes[edge[1]]["coord"][1], g.nodes[edge[1]]["coord"][0])
+        map.add_line(Line([coord_1, coord_2], color, 2))
+
+    image = map.render()
+    image.save(filename)
+
+
+def get_colors_from_path(g, p: Path) -> dict[str|int, tuple[int, int, int]]:
+    '''Returns a dictionary with the colors of each line. The colors are set randomly.'''
+
+    linies = {g.nodes[node].get('linia', None) for node in p[0]} #p[0] es una llista
+
+    return {linia: (randint(0, 255), randint(0,255), randint(0,255)) for linia in linies if linia is not None}
+
+
+def plot_path(g: CityGraph, p: Path, filename: str, *args) -> None:
+
+    map = StaticMap(300, 300)
+
+    colors_linies: dict[str, tuple[int, int, int]] = get_colors_from_path(g, p)
+
+
+    # draw nodes
+    for i, node in enumerate(p[0]):
+
+        if g.nodes[node]['type'] == "Parada":
+            color = "red"
+
+        elif g.nodes[node]['type'] == "Cruilla":
+            color = "blue"
+
+        map.add_marker(CircleMarker((g.nodes[node]['coord'][1], g.nodes[node]['coord'][0]), color, 3))
+
+        if i != 0: #draw edges
+            prev_node = p[0][i-1]
+
+            coord_1 = (g.nodes[node]['coord'][1], g.nodes[node]['coord'][0])
+            coord_2 = (g.nodes[prev_node]['coord'][1], g.nodes[prev_node]['coord'][0])
+
+
+            #si un dels dos es cruilla s'ha d'anar a peu
+            if g.nodes[node]['type'] == "Cruilla" or g.nodes[prev_node]['type'] == "Cruilla":
+                color = "blue"
+            else:
+                color = colors_linies[g.nodes[node]['linia']]
+
+            map.add_line(Line([coord_1, coord_2], color, 2))
+
+    image = map.render()
+    image.save(filename)
 
 
 def pred_to_list(src, dst, pred):
@@ -158,7 +290,7 @@ def pred_to_list(src, dst, pred):
     return nodes_and_linies
 
 
-def find_path_delay(ox_g: OsmnxGraph, g: CityGraph, src: Coord, dst: Coord) -> Path:
+def find_path_delay_picat(ox_g: OsmnxGraph, g: CityGraph, src: Coord, dst: Coord) -> Path:
     '''requisits: els nodes de buses han de tenir una llista amb les parades
         nota: g.neigbors i nearest_nodes retornen només ids'''
 
@@ -209,68 +341,7 @@ def find_path_delay(ox_g: OsmnxGraph, g: CityGraph, src: Coord, dst: Coord) -> P
     return (pred_to_list(cruilla_src, cruilla_dst, pred), int(cost[cruilla_dst]))
 
 
-def find_path(ox_g: OsmnxGraph, g: CityGraph, src: Coord, dst: Coord) -> Path:
-    '''nota: ox.distance.nearest_nodes necessita coordenades girades
-        shortest_path: If the source and target are both specified, return a single list of nodes in a shortest path from the source to the target.
-    '''
-
-    cruilla_src, cruilla_dst = ox.distance.nearest_nodes(ox_g, [src[1], dst[1]], [src[0], dst[0]], return_dist=False)
-
-    nodes_path: list[T] = nx.shortest_path(g, source = cruilla_src, target = cruilla_dst, weight = 'weight')
-
-    return (nodes_path, nx.path_weight(g, nodes_path, 'weight'))
-
-
-def show(g: CityGraph) -> None:
-    '''mostra g de forma interactiva en una finestra
-    shows the graph interactively using network.draw'''
-
-    positions = nx.get_node_attributes(g, "coord")
-    nx.draw(g, pos=positions, with_labels = False, node_size=10)
-    plt.show()
-
-
-def plot(g: CityGraph, filename: str) -> None:
-    '''desa g com una imatge amb el mapa de la cuitat de fons en l'arxiu filename'''
-
-    map = StaticMap(300, 300)
-
-    # draw nodes
-    for node in g.nodes(data = True):
-        if node[1]['type'] == "Parada":
-            color = "red"
-
-        elif node[1]['type'] == "Cruilla":
-            color = "blue"
-
-        map.add_marker(CircleMarker(g[1]['coord'], color, 3))
-
-    # draw edges
-    for edge in g.edges(data = True):
-        if edge[2]['type'] == "Carrer":
-            color = 'orange'
-
-        elif edge[2]['type'] == "Bus":
-            color = "green"
-
-        #we swap the components
-        coord_1 = (g.nodes[edge[0]]["coord"][1], g.nodes[edge[0]]["coord"][0])
-        coord_2 = (g.nodes[edge[1]]["coord"][1], g.nodes[edge[1]]["coord"][0])
-        map.add_line(Line([coord_1, coord_2], color, 2))
-
-    image = map.render()
-    image.save(filename)
-
-
-def get_colors_from_path(p: Path) -> set[str]:
-
-
-    linies = {item[1] for item in p[0]} #p[0] es una llista
-
-    return {linia: (randint(0, 255), randint(0,255), randint(0,255)) for linia in linies}
-
-
-def plot_path(g: CityGraph, p: Path, filename: str, *args) -> None:
+def plot_path_picat(g: CityGraph, p: Path, filename: str, *args) -> None:
     '''mostra el camí p en l'arxiu filename. desa g com una imatge amb el mapa de la ciutat de fons en l'arxiu filename'''
 
     map = StaticMap(300, 300)
@@ -290,12 +361,14 @@ def plot_path(g: CityGraph, p: Path, filename: str, *args) -> None:
         map.add_marker(CircleMarker((g.nodes[node]['coord'][1], g.nodes[node]['coord'][0]), color, 3))
 
         if i != 0: #draw edges
+            prev_node = p[0][i-1][0]
+
             coord_1 = (g.nodes[node]['coord'][1], g.nodes[node]['coord'][0])
-            coord_2 = (g.nodes[p[0][i-1][0]]['coord'][1], g.nodes[p[0][i-1][0]]['coord'][0])
+            coord_2 = (g.nodes[prev_node]['coord'][1], g.nodes[prev_node]['coord'][0])
 
             #si un dels dos es cruilla s'ha d'anar a peu
 
-            if g.nodes[node]['type'] == "Cruilla" or g.nodes[p[0][i-1][0]]['type'] == "Cruilla":
+            if g.nodes[node]['type'] == "Cruilla" or g.nodes[prev_node]['type'] == "Cruilla":
                 color = "blue"
             else:
                 color = colors_linies[linia]
@@ -307,22 +380,22 @@ def plot_path(g: CityGraph, p: Path, filename: str, *args) -> None:
     image.save(filename)
 
 
+
 '''
-h = nx.Graph()
-print(cruilles)
-print(g.nodes[cruilles[0]])
-h.add_nodes_from([(cruilles[0], g.nodes[cruilles[0]]), (cruilles[1], g.nodes[cruilles[1]])])
-h.add_node(1, coord = src)
-h.add_node(2, coord = dst)
-
-positions = nx.get_node_attributes(h, "coord")
-nx.draw(h, pos=positions, with_labels = False, node_size=10)
-plt.show()'''
-
-'''g = nx.Graph()
+g = nx.Graph()
 g.add_node(1, type="d")
 g.add_node(2, type="ss")
-g.add_edge(1,2)'''
+g.add_edge(1,2)
+g.add_node(3)
+g.add_node(4)
+
+nodes = [(i, {'nom' : "hola"}) for i in range(5)]
+h = nx.Graph()
+h.add_nodes_from(nodes)
+h.add_edges_from(itertools.combinations([node[0] for node in nodes], 2), weight = 10)
+
+print(h.edges(2, data = True))'''
+
 
 
 osmx_g = get_osmnx_graph()
@@ -331,6 +404,6 @@ for node in osmx_g.nodes:
     break
 city = build_city_graph(osmx_g, get_buses_graph())
 
-plot_path(city, find_path_delay(osmx_g, city, (41.389351254678175, 2.1133217760069765), (41.420436747082135, 2.2046134763185274)), "path_without_delay.png")
+plot_path(city, find_path(osmx_g, city, (41.37949301243075, 2.121040855869357), (41.360067, 2.138944)), "path_delay.png")
 
 #find_path(get_osmnx_graph(), build_city_graph(get_osmnx_graph(), get_buses_graph()), (41.3860832,2.1627945), (41.4158589,2.1482698))
