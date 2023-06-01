@@ -135,6 +135,26 @@ class Billboard:
         ]
 
 
+def process_cinema(
+    cinema: str,
+    cinema_name_adress: dict[str, tuple[float, float]],
+    cinemas_location: dict[str, tuple[float, float]],
+) -> None:
+    cinema_adress_html = cinema.find(
+        lambda tag: tag.name == "span" and tag.get("class") == ["lighten"]
+    )
+    address: str = cinema_adress_html.text.strip()
+
+    cinema_name_html: str = cinema.find("a", {"class": "no_underline j_entities"})
+    name = cinema_name_html.text.strip()
+    address = address.lower()
+    address = address.replace("calle", "carrer")
+    address = address.replace("avenida", "avinguda")
+    address = address.replace("paseig", "passeig")
+
+    cinema_name_adress[name] = address, cinemas_location[name]
+
+
 def read_billboard() -> Billboard:
     """Scrapes the data from sensacine.com web of
     the movies and theaters of Barcelona"""
@@ -186,32 +206,13 @@ def read_billboard() -> Billboard:
         soup = BeautifulSoup(page.content, "html.parser")
 
         cinemas_div = soup.find_all("div", {"class": "tabs_box_pan item-0"})
+
         cinema_name_adress_html = soup.find_all(
             "div", {"class": "margin_10b j_entity_container"}
         )
 
         for cinema in cinema_name_adress_html:
-            cinema_adress_html = cinema.find(
-                lambda tag: tag.name == "span" and tag.get("class") == ["lighten"]
-            )
-            address = cinema_adress_html.text.strip()
-
-            cinema_name_html = cinema.find("a", {"class": "no_underline j_entities"})
-            name = cinema_name_html.text.strip()
-            address = address.lower()
-            address = address.replace("calle", "carrer")
-            address = address.replace("avenida", "avinguda")
-            address = address.replace("paseig", "passeig")
-
-            url = (
-                "https://nominatim.openstreetmap.org/search/"
-                + urllib.parse.quote(address)
-                + "?format=json"
-            )
-            # response = requests.get(url).json()
-            # coord: tuple[float, float] = response[0]["lat"], response[0]["lon"]
-            cinema_name_adress[name] = address, cinemas_location[name]
-            # print(name, address, coord)
+            process_cinema(cinema, cinema_name_adress, cinemas_location)
 
         for cinema_div in cinemas_div:
             # print(movie_div)
@@ -246,7 +247,7 @@ def read_billboard() -> Billboard:
                     projection: Projection = Projection(session, film, cinema)
 
                     billboard.add_projection(projection)
-    # print(cinema_name_adress)
+
     return billboard
 
 
