@@ -13,7 +13,8 @@ URL = "https://www.ambmobilitat.cat/OpenData/ObtenirDadesAMB.json"
 
 
 def get_data_from_url():
-    """returns a dictionary of the buses data from the URL. The URL is a constant."""
+    """returns a dictionary of the buses data from the URL.
+    The URL is a constant."""
     response = requests.get(URL)
     assert response, "Error with URL"
     return response.json()
@@ -29,13 +30,16 @@ def get_linies():
 
 
 def get_buses_graph() -> BusesGraph:
-    """downloads the data of the AMB and returns an undirected graph of buses"""
-
-    # nota: no totes les linies comencen i acaben amb la mateixa parada, pero per simplicitat hem considerat que totes ho son
-    # nota2: he suposat que CodAMB és un identificador únic per a cada parada (poden haver parades diferents a pl cat per exemple)
-    # nota3: afegir un node preexistent no en modifica les arestes, la llibreria ho ignora
-    # nota4: ignorem les parades de fora de Barcelona
-    # nota5: les subparades duna mateixa parada encara no estan unides entre si
+    """Downloads the data of the AMB and returns an undirected graph of buses
+    nota: no totes les linies comencen i acaben amb la mateixa parada, pero per
+        simplicitat hem considerat que totes ho son
+    nota2: he suposat que CodAMB és un identificador únic per a cada parada
+        (poden haver parades diferents a pl cat per exemple)
+    nota3: afegir un node preexistent no en modifica les arestes, la llibreria
+        ho ignora
+    nota4: ignorem les parades de fora de Barcelona
+    nota5: les subparades duna mateixa parada encara no estan unides entre si
+    """
 
     buses: BusesGraph = BusesGraph()
 
@@ -74,7 +78,7 @@ def get_buses_graph() -> BusesGraph:
 
 def show(g: BusesGraph) -> None:
     """shows the graph interactively using network.draw"""
-    # nota: hi ha nodes no connexos pq pertanyen a linies dhospitalet, sant adria etc
+    # nota: hi ha nodes no connexos pq pertanyen a linies de fora BCN
 
     positions = nx.get_node_attributes(g, "coord")
     nx.draw(g, pos=positions, with_labels=False, node_size=10)
