@@ -1,4 +1,5 @@
 import json
+import urllib.parse
 from dataclasses import dataclass
 
 import requests
@@ -13,7 +14,7 @@ class Film:
     actors: list[str]
 
     def __init__(self, data_film_str) -> None:
-        """Initializes Film class given it's data in html format."""
+        """Initializes Film class given its data in html format."""
 
         data_film = json.loads(data_film_str)
 
@@ -27,14 +28,19 @@ class Film:
 class Cinema:
     name: str
     address: str
+    coord: tuple[float, float]
 
-    def __init__(self, data_cinema_str) -> None:
-        """Initializes Cinema class given it's data in html format."""
+    def __init__(
+        self,
+        name,
+        adress: str,
+        coord: tuple[float, float],
+    ) -> None:
+        """Initializes Cinema class given its parameters"""
 
-        data_cinema = json.loads(data_cinema_str)
-        self.name = data_cinema["name"]
-        # no trobo la puta adreça del teatre en el fitxer html.
-        self.address = "----"
+        self.name = name
+        self.address = adress
+        self.coord = coord
 
 
 @dataclass
@@ -46,7 +52,7 @@ class Projection:
     language: str
 
     def __init__(self, session_data: str, film: Film, cinema: Cinema) -> None:
-        """Initializes Projection dataclass given it's data in html format."""
+        """Initializes Projection dataclass given its data in html format."""
 
         session_time_str = session_data["data-times"][1:-1]
 
@@ -67,11 +73,12 @@ class Projection:
         self.cinema = cinema
         self.time = starting_time
         self.duration = self.calculate_duration(starting_time, ending_time)
-        self.language = "----"
+        self.language = "----"  # posa si es VO o doblada
 
     def calculate_duration(
         self, starting_time: tuple[int, int], ending_time: tuple[int, int]
     ) -> int:
+        # afegir docstring
         start_minutes = starting_time[0] * 60 + starting_time[1]
         end_minutes = ending_time[0] * 60 + ending_time[1]
 
@@ -104,17 +111,92 @@ class Billboard:
     def add_projection(self, projection: Projection) -> None:
         self.projections.append(projection)
 
-    def search_film_by_word(self, word: str) -> list[Film]:
-        return [film for film in self.films if word.lower() in film.title.lower()]
+    def search_projection_by_word(self, word: str) -> list[Projection]:
+        return [
+            projection
+            for projection in self.projections
+            if word.lower() in projection.film.title.lower()
+        ]
+
+    def search_projection_by_time(
+        self, starting_time: tuple[int, int]
+    ) -> list[Projection]:
+        return [
+            projection
+            for projection in self.projections
+            if starting_time <= projection.time
+        ]
+
+    def search_projection_by_duration(self, duration: int) -> list[Projection]:
+        return [
+            projection
+            for projection in self.projections
+            if duration <= projection.duration
+        ]
 
 
-def read() -> Billboard:
+def process_cinema(
+    cinema: str,
+    cinema_name_adress: dict[str, tuple[float, float]],
+    cinemas_location: dict[str, tuple[float, float]],
+) -> None:
+    cinema_adress_html = cinema.find(
+        lambda tag: tag.name == "span" and tag.get("class") == ["lighten"]
+    )
+    address: str = cinema_adress_html.text.strip()
+
+    cinema_name_html: str = cinema.find("a", {"class": "no_underline j_entities"})
+    name = cinema_name_html.text.strip()
+    address = address.lower()
+    address = address.replace("calle", "carrer")
+    address = address.replace("avenida", "avinguda")
+    address = address.replace("paseig", "passeig")
+
+    cinema_name_adress[name] = address, cinemas_location[name]
+
+
+def read_billboard() -> Billboard:
     """Scrapes the data from sensacine.com web of
     the movies and theaters of Barcelona"""
 
     billboard: Billboard = Billboard(list(), list(), list(), set())
 
     base_url: str = "https://www.sensacine.com/cines/cines-en-72480/?page="
+
+    cinemas_location: dict[str, tuple[float, float]] = {
+        "Arenas Multicines 3D": (41.37645873603848, 2.1492467400941715),
+        "Aribau Multicines": (41.38622954118975, 2.1625393383857823),
+        "Bosque Multicines": (41.40161248569297, 2.151937970358723),
+        "Cinema Comedia": (41.38963905352764, 2.1677083550158467),
+        "Cinemes Girona": (41.39976219340622, 2.1646021126874433),
+        "Cines Verdi Barcelona": (41.404123503674946, 2.1569592746060673),
+        "Cinesa Diagonal 3D": (41.3939571456629, 2.136310199194024),
+        "Cinesa Diagonal Mar 18": (41.4104066884377, 2.2165577979125546),
+        "Cinesa La Maquinista 3D": (41.43968702910417, 2.1983860838534364),
+        "Cinesa SOM Multiespai": (41.435576596290986, 2.1807710685108392),
+        "Glòries Multicines": (41.4053995786576, 2.1927300415232907),
+        "Gran Sarrià Multicines": (41.39497626938792, 2.1340554979084074),
+        "Maldá Arts Forum": (41.38335521981628, 2.1739034685088092),
+        "Renoir Floridablanca": (41.38181932245526, 2.162600741522349),
+        "Sala Phenomena Experience": (41.40916923817682, 2.171972029879437),
+        "Yelmo Cines Icaria 3D": (41.39081534652564, 2.198733496795877),
+        "Boliche Cinemes": (41.39540740361847, 2.153624068509293),
+        "Zumzeig Cinema": (41.37754018596865, 2.1450699973441822),
+        "Balmes Multicines": (41.40736701577023, 2.138718385701353),
+        "Cinesa La Farga 3D ": (41.36324361629017, 2.104830226735673),
+        "Filmax Gran Via 3D": (41.358458853930166, 2.12835815131626),
+        "Full HD Cinemes Centre Splau": (41.34757656010739, 2.0790624624109917),
+        "Cine Capri": (41.325897166270195, 2.0953815132325104),
+        "Ocine Màgic": (41.44390419188643, 2.2306844298807826),
+        "Cinebaix": (41.38204532152056, 2.0451188433715655),
+        "Cinemes Can Castellet": (41.345363870736016, 2.0405710690597574),
+        "Cinemes Sant Cugat": (41.469755698209426, 2.0905412796073817),
+        "Cines Montcada": (41.49435241992408, 2.180264296085647),
+        "Yelmo Cines Baricentro": (41.508494990085694, 2.1383378243356965),
+        "Cinesa La Farga 3D": (41.36328395211327, 2.104722953165676),
+    }
+
+    cinema_name_adress: dict[str, tuple[str, tuple[float, float]]] = dict()
 
     for idx_page in range(1, 4):
         url = base_url + str(idx_page)
@@ -123,39 +205,51 @@ def read() -> Billboard:
 
         soup = BeautifulSoup(page.content, "html.parser")
 
-        movies = soup.find_all("div", {"class": "item_resa"})
+        cinemas_div = soup.find_all("div", {"class": "tabs_box_pan item-0"})
 
-        for movie in movies:
-            data_theater_movie_div = movie.find("div", {"class": "j_w"})
+        cinema_name_adress_html = soup.find_all(
+            "div", {"class": "margin_10b j_entity_container"}
+        )
 
-            # We obtain and process the movie data
+        for cinema in cinema_name_adress_html:
+            process_cinema(cinema, cinema_name_adress, cinemas_location)
 
-            data_film_str = data_theater_movie_div["data-movie"]
-            film: Film = Film(data_film_str)
-            billboard.add_film(film)
+        for cinema_div in cinemas_div:
+            # print(movie_div)
+            movies = cinema_div.find_all("div", {"class": "item_resa"})
 
-            # We obtain and process the theater data
+            for movie in movies:
+                data_theater_movie_div = movie.find("div", {"class": "j_w"})
 
-            data_cinema_str = data_theater_movie_div["data-theater"]
-            cinema: Cinema = Cinema(data_cinema_str)
-            billboard.add_cinema(cinema)
+                # We obtain and process the movie data
 
-            # We obtain and process the sessions hours data
+                data_film_str = data_theater_movie_div["data-movie"]
+                film: Film = Film(data_film_str)
+                billboard.add_film(film)
 
-            list_film_sessions_str = movie.find("ul", {"class": "list_hours"})
+                # We obtain and process the theater data
 
-            sessions_str = list_film_sessions_str.find_all("em")
+                data_cinema_str = data_theater_movie_div["data-theater"]
+                data_cinema = json.loads(data_cinema_str)
+                name = data_cinema["name"].strip()
+                cinema: Cinema = Cinema(
+                    name, cinema_name_adress[name][0], cinema_name_adress[name][1]
+                )
+                billboard.add_cinema(cinema)
 
-            for session in sessions_str:
-                projection: Projection = Projection(session, film, cinema)
+                # We obtain and process the sessions hours data
 
-                billboard.add_projection(projection)
+                list_film_sessions_str = movie.find("ul", {"class": "list_hours"})
+
+                sessions_str = list_film_sessions_str.find_all("em")
+
+                for session in sessions_str:
+                    projection: Projection = Projection(session, film, cinema)
+
+                    billboard.add_projection(projection)
 
     return billboard
 
 
 if __name__ == "__main__":
-    billboard = read()
-    # test code
-    for f in billboard.search_film_by_word("La"):
-        print(f.title)
+    billboard = read_billboard()
