@@ -31,14 +31,12 @@ def get_linies():
 
 def get_buses_graph() -> BusesGraph:
     """Downloads the data of the AMB and returns an undirected graph of buses
-    nota: no totes les linies comencen i acaben amb la mateixa parada, pero per
-        simplicitat hem considerat que totes ho son
-    nota2: he suposat que CodAMB és un identificador únic per a cada parada
+    nota1: he suposat que CodAMB és un identificador únic per a cada parada
         (poden haver parades diferents a pl cat per exemple)
-    nota3: afegir un node preexistent no en modifica les arestes, la llibreria
+    nota2: afegir un node preexistent no en modifica les arestes, la llibreria
         ho ignora
-    nota4: ignorem les parades de fora de Barcelona
-    nota5: les subparades duna mateixa parada encara no estan unides entre si
+    nota3: ignorem les parades de fora de Barcelona
+    nota4: les subparades duna mateixa parada encara no estan unides entre si
     """
 
     buses: BusesGraph = BusesGraph()
