@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import TypeAlias
+from typing import TypeAlias, TypeVar
 
 import matplotlib.pyplot as plt
 import networkx as nx
@@ -8,6 +8,8 @@ from staticmap import CircleMarker, Line, StaticMap
 
 Coord: TypeAlias = tuple[float, float]  # (latitude, longitude)
 BusesGraph: TypeAlias = nx.Graph
+
+T = TypeVar('T')
 
 URL = "https://www.ambmobilitat.cat/OpenData/ObtenirDadesAMB.json"
 
@@ -30,7 +32,9 @@ def get_linies():
 
 
 def get_buses_graph() -> BusesGraph:
-    """Downloads the data of the AMB and returns an undirected graph of buses
+    """Downloads the data of the AMB and returns an undirected graph of buses.
+    There is a different node for each line in each stop.
+
     nota1: he suposat que CodAMB és un identificador únic per a cada parada
         (poden haver parades diferents a pl cat per exemple)
     nota2: afegir un node preexistent no en modifica les arestes, la llibreria
@@ -44,9 +48,7 @@ def get_buses_graph() -> BusesGraph:
     linies = get_linies()  # llista de diccionaris
 
     for linia in linies:
-        parades_linia = linia["Parades"][
-            "Parada"
-        ]  # llista de diccionaris (parades duna mateixa línia)
+        parades_linia: list[dict[str, 'T']] = linia["Parades"]["Parada"]
 
         for i, parada in enumerate(parades_linia):
             if parada["Municipi"] == "Barcelona":
