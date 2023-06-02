@@ -46,7 +46,7 @@ def draw_menu():
 
 
 def show_projections(projections: list[Projection]) -> None:
-    """Show a set of films to the user"""
+    """Show a set of films to the user."""
 
     table = Table(show_header=True)
     table.add_column("Cinema", justify="left", style="bright_cyan")
