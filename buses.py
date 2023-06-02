@@ -14,16 +14,16 @@ T = TypeVar('T')
 URL = "https://www.ambmobilitat.cat/OpenData/ObtenirDadesAMB.json"
 
 
-def get_data_from_url():
-    """returns a dictionary of the buses data from the URL.
+def get_data_from_url() -> dict[str, 'T']:
+    """Returns a dictionary of the buses data from the URL.
     The URL is a constant."""
     response = requests.get(URL)
     assert response, "Error with URL"
     return response.json()
 
 
-def get_linies():
-    """returns a list of bus lines"""
+def get_linies() -> list[dict[str, 'T']]:
+    """Returns a list of bus lines"""
     data = get_data_from_url()
     data = data[list(data.keys())[0]]
 
@@ -37,10 +37,8 @@ def get_buses_graph() -> BusesGraph:
 
     nota1: he suposat que CodAMB és un identificador únic per a cada parada
         (poden haver parades diferents a pl cat per exemple)
-    nota2: afegir un node preexistent no en modifica les arestes, la llibreria
-        ho ignora
-    nota3: ignorem les parades de fora de Barcelona
-    nota4: les subparades duna mateixa parada encara no estan unides entre si
+    nota2: ignorem les parades de fora de Barcelona
+    nota3: les subparades duna mateixa parada encara no estan unides entre si
     """
 
     buses: BusesGraph = BusesGraph()
@@ -77,8 +75,9 @@ def get_buses_graph() -> BusesGraph:
 
 
 def show(g: BusesGraph) -> None:
-    """shows the graph interactively using network.draw"""
-    # nota: hi ha nodes no connexos pq pertanyen a linies de fora BCN
+    """Shows the graph interactively using network.draw
+    nota: hi ha nodes no connexos pq pertanyen a linies de fora BCN
+    """
 
     positions = nx.get_node_attributes(g, "coord")
     nx.draw(g, pos=positions, with_labels=False, node_size=10)
@@ -86,7 +85,7 @@ def show(g: BusesGraph) -> None:
 
 
 def plot(g: BusesGraph, nom_fitxer: str) -> None:
-    """saves the graph as an image with the map of the city in the background
+    """Saves the graph as an image with the map of the city in the background
     in the file nom_fitxer using staticmaps"""
 
     map = StaticMap(300, 300)
