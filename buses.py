@@ -17,6 +17,7 @@ URL = "https://www.ambmobilitat.cat/OpenData/ObtenirDadesAMB.json"
 def get_data_from_url() -> dict[str, dict[str, 'T']]:
     """Returns a dictionary of the buses data from the URL.
     The URL is a constant."""
+
     response = requests.get(URL)
     assert response, "Error with URL"
     return response.json()
@@ -24,6 +25,7 @@ def get_data_from_url() -> dict[str, dict[str, 'T']]:
 
 def get_linies() -> list[dict[str, 'T']]:
     """Returns a list of bus lines"""
+    
     data: dict[str, dict[str, 'T']] = get_data_from_url()
     data = data[list(data.keys())[0]]
 
@@ -35,10 +37,12 @@ def get_buses_graph() -> BusesGraph:
     """Downloads the data of the AMB and returns an undirected graph of buses.
     There is a different node for each line in each stop.
 
-    nota1: he suposat que CodAMB és un identificador únic per a cada parada
-        (poden haver parades diferents a pl cat per exemple)
-    nota2: ignorem les parades de fora de Barcelona
-    nota3: les subparades duna mateixa parada encara no estan unides entre si
+    The format of nodes ids is "{CodiAMB}-{linia}"
+
+    note1: CodAMB is a unique id of each stop
+        (there may be different stops with the same name so Nom is a bad id)
+    note2: stops out of Barcelona are ignored
+    note3: substops from the same stop are not connected yet
     """
 
     buses: BusesGraph = BusesGraph()
@@ -76,7 +80,8 @@ def get_buses_graph() -> BusesGraph:
 
 def show_buses(g: BusesGraph) -> None:
     """Shows the graph interactively using network.draw
-    nota: hi ha nodes no connexos pq pertanyen a linies de fora BCN
+
+    note: some nodes are not connected because they belong to lines outside BCN
     """
 
     positions = nx.get_node_attributes(g, "coord")
