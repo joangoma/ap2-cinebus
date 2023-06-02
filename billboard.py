@@ -5,7 +5,7 @@ from dataclasses import dataclass
 import requests
 from bs4 import BeautifulSoup
 
-cinemas_location: dict[str, tuple[float, float]] = {
+CINEMAS_LOCATION: dict[str, tuple[float, float]] = {
     "Arenas Multicines 3D": (41.37645873603848, 2.1492467400941715),
     "Aribau Multicines": (41.38622954118975, 2.1625393383857823),
     "Bosque Multicines": (41.40161248569297, 2.151937970358723),
@@ -32,14 +32,12 @@ cinemas_location: dict[str, tuple[float, float]] = {
     "Ocine Màgic": (41.44390419188643, 2.2306844298807826),
     "Cinebaix": (41.38204532152056, 2.0451188433715655),
     "Cinemes Can Castellet": (41.345363870736016, 2.0405710690597574),
-    "Cinemes Sant Cugat": (41.469755698209426, 2.0905412796073817),
-    "Cines Montcada": (41.49435241992408, 2.180264296085647),
-    "Yelmo Cines Baricentro": (41.508494990085694, 2.1383378243356965),
     "Cinesa La Farga 3D": (41.36328395211327, 2.104722953165676),
 }
 
 
-def calculate_time(starting_time: tuple[int, int], ending_time: tuple[int, int]) -> int:
+def calculate_time(starting_time: tuple[int, int],
+                    ending_time: tuple[int, int]) -> int:
     # afegir docstring
     start_minutes = starting_time[0] * 60 + starting_time[1]
     end_minutes = ending_time[0] * 60 + ending_time[1]
@@ -128,14 +126,15 @@ class Billboard:
     films_titles: set[str]
 
     def add_film(self, film: Film) -> None:
-        """Adds a film in the list that tracks the film avoiding repetitions."""
+        """Adds a film in the list that tracks films avoiding repetitions."""
 
         if film.title not in self.films_titles:
             self.films.append(film)
             self.films_titles.add(film.title.lower())
 
     def add_cinema(self, cinema: Cinema) -> None:
-        """Adds a cinema in the list that tracks the cinemas avoiding repetitions."""
+        """Adds a cinema in the list that tracks the cinemas avoiding
+        repetitions."""
 
         if not self.cinemas or self.cinemas[-1] != cinema:
             self.cinemas.append(cinema)
@@ -163,28 +162,31 @@ class Billboard:
         return [
             projection
             for projection in self.projections
-            if duration <= projection.duration
+            if duration >= projection.duration
         ]
 
 
 def process_cinema(
     cinema: str,
     cinema_name_adress: dict[str, tuple[float, float]],
-    cinemas_location: dict[str, tuple[float, float]],
+    CINEMAS_LOCATION: dict[str, tuple[float, float]],
 ) -> None:
     cinema_adress_html = cinema.find(
         lambda tag: tag.name == "span" and tag.get("class") == ["lighten"]
     )
     address: str = cinema_adress_html.text.strip()
 
-    cinema_name_html: str = cinema.find("a", {"class": "no_underline j_entities"})
+    cinema_name_html: str = cinema.find("a",
+                                        {"class": "no_underline j_entities"})
     name = cinema_name_html.text.strip()
+    if name not in CINEMAS_LOCATION.keys():
+        return
     address = address.lower()
     address = address.replace("calle", "carrer")
     address = address.replace("avenida", "avinguda")
     address = address.replace("paseig", "passeig")
 
-    cinema_name_adress[name] = address, cinemas_location[name]
+    cinema_name_adress[name] = address, CINEMAS_LOCATION[name]
 
 
 def read_billboard() -> Billboard:
@@ -211,7 +213,7 @@ def read_billboard() -> Billboard:
         )
 
         for cinema in cinema_name_adress_html:
-            process_cinema(cinema, cinema_name_adress, cinemas_location)
+            process_cinema(cinema, cinema_name_adress, CINEMAS_LOCATION)
 
         for cinema_div in cinemas_div:
             # print(movie_div)
@@ -231,14 +233,18 @@ def read_billboard() -> Billboard:
                 data_cinema_str = data_theater_movie_div["data-theater"]
                 data_cinema = json.loads(data_cinema_str)
                 name = data_cinema["name"].strip()
+                if name not in cinema_name_adress.keys():
+                    continue
                 cinema: Cinema = Cinema(
-                    name, cinema_name_adress[name][0], cinema_name_adress[name][1]
+                    name, cinema_name_adress[name][0],
+                    cinema_name_adress[name][1]
                 )
                 billboard.add_cinema(cinema)
 
                 # We obtain and process the sessions hours data
 
-                list_film_sessions_str = movie.find("ul", {"class": "list_hours"})
+                list_film_sessions_str = movie.find("ul",
+                                                    {"class": "list_hours"})
 
                 sessions_str = list_film_sessions_str.find_all("em")
 

@@ -14,7 +14,7 @@ T = TypeVar('T')
 URL = "https://www.ambmobilitat.cat/OpenData/ObtenirDadesAMB.json"
 
 
-def get_data_from_url() -> dict[str, 'T']:
+def get_data_from_url() -> dict[str, dict[str, 'T']]:
     """Returns a dictionary of the buses data from the URL.
     The URL is a constant."""
     response = requests.get(URL)
@@ -24,7 +24,7 @@ def get_data_from_url() -> dict[str, 'T']:
 
 def get_linies() -> list[dict[str, 'T']]:
     """Returns a list of bus lines"""
-    data = get_data_from_url()
+    data: dict[str, dict[str, 'T']] = get_data_from_url()
     data = data[list(data.keys())[0]]
 
     linies = data[list(data.keys())[1]]
@@ -43,7 +43,7 @@ def get_buses_graph() -> BusesGraph:
 
     buses: BusesGraph = BusesGraph()
 
-    linies = get_linies()  # llista de diccionaris
+    linies: list[dict[str, 'T']] = get_linies()  # llista de diccionaris
 
     for linia in linies:
         parades_linia: list[dict[str, 'T']] = linia["Parades"]["Parada"]
@@ -74,7 +74,7 @@ def get_buses_graph() -> BusesGraph:
     return buses
 
 
-def show(g: BusesGraph) -> None:
+def show_buses(g: BusesGraph) -> None:
     """Shows the graph interactively using network.draw
     nota: hi ha nodes no connexos pq pertanyen a linies de fora BCN
     """
@@ -84,7 +84,7 @@ def show(g: BusesGraph) -> None:
     plt.show()
 
 
-def plot(g: BusesGraph, nom_fitxer: str) -> None:
+def plot_buses(g: BusesGraph, nom_fitxer: str) -> None:
     """Saves the graph as an image with the map of the city in the background
     in the file nom_fitxer using staticmaps"""
 

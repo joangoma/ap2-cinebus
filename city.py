@@ -12,7 +12,6 @@ from haversine import haversine
 
 from buses import *
 
-T = TypeVar("T")
 
 OsmnxGraph: TypeAlias = nx.MultiDiGraph
 CityGraph: TypeAlias = nx.Graph
@@ -130,8 +129,8 @@ def add_weights(city: CityGraph) -> None:
     # add weight betwen stops of the same line
     for edge in city.edges(data=True):
         if edge[2]["type"] == "Bus":
-            # we get the closest crosswalk to the stop (it was previously found)
-            #from all the edges of the stops is the only one of type Carrer
+            # we get the closest crosswalk to the stop (it is already found)
+            # from all the edges of the stops is the only one of type Carrer
             cruilla1 = list(
                 filter(
                     lambda edge_parada: edge_parada[2]["type"] == "Carrer",
@@ -206,7 +205,8 @@ def build_city_graph(g1: OsmnxGraph, g2: BusesGraph) -> CityGraph:
 
     join_parada_cruilla(city, g2, g1)
 
-    # PODRIEM AFEGIR EL WEIGHT DELS CARRERS QUAN AFEGIM ELS EDGES I Q LA FUNCIO ES DIGUI ADD_WEIGHTS_BUSES
+    # PODRIEM AFEGIR EL WEIGHT DELS CARRERS QUAN AFEGIM ELS EDGES I
+    # Q LA FUNCIO ES DIGUI ADD_WEIGHTS_BUSES
     add_weights(city)  # com mes valors poguem tenir precalculats millor
 
     save_graph(city, FILE_CITY_NAME)
@@ -233,7 +233,7 @@ def find_path(ox_g: OsmnxGraph, g: CityGraph, src: Coord, dst: Coord) -> Path:
     return (nodes_path, nx.path_weight(g, nodes_path, "weight"))
 
 
-def show(g: CityGraph) -> None:
+def show_city(g: CityGraph) -> None:
     """Shows the graph g interactively using network.draw"""
 
     positions = nx.get_node_attributes(g, "coord")
@@ -241,7 +241,7 @@ def show(g: CityGraph) -> None:
     plt.show()
 
 
-def plot(g: CityGraph, filename: str) -> None:
+def plot_city(g: CityGraph, filename: str) -> None:
     """Saves the graph g as an image with the city map in the
     background in the file filename"""
 
@@ -274,7 +274,8 @@ def plot(g: CityGraph, filename: str) -> None:
     image.save(filename)
 
 
-def get_colors_from_path(g: CityGraph, p: Path) -> dict[str | int, tuple[int, int, int]]:
+def get_colors_from_path(
+        g: CityGraph, p: Path) -> dict[str, tuple[int, int, int]]:
     """Returns a dictionary with the colors of each line. The colors
     are set randomly."""
 
@@ -321,16 +322,3 @@ def plot_path(g: CityGraph, p: Path, filename: str, *args) -> None:
 
     image = map.render()
     image.save(filename)
-
-
-osmx_g = get_osmnx_graph()
-
-city = build_city_graph(osmx_g, get_buses_graph())
-
-plot_path(
-    city,
-    find_path(
-        osmx_g, city, (41.3794930124305, 2.121040855869), (41.360067, 2.138944)
-    ),
-    "path_delay.png",
-)
