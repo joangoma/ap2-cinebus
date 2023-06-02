@@ -1,5 +1,3 @@
-import matplotlib.image as mpimg
-import matplotlib.pyplot as plt
 from rich import emoji
 from rich.console import Console
 from rich.markdown import Markdown
@@ -8,16 +6,18 @@ from rich.prompt import Prompt
 from rich.style import Style
 from rich.table import Table
 
-from billboard import *
 from buses import *
+from billboard import *
 from city import *
+
+import matplotlib.pyplot as plt
+import matplotlib.image as mpimg
 
 console = Console()
 
 
+# Function to draw the menu
 def draw_menu():
-    """Shows the main menu."""
-
     console.clear()
     MARKDOWN = """
 # CINE BUS 🚌 🎥
@@ -31,7 +31,7 @@ def draw_menu():
         "2 Find film",
         "3 Show buses graph",
         "4 Show city graph",
-        "5 Go to the cinema!",
+        "5 Choose film and go to the cinema",
         "6 Exit",
     ]
     console.print()
@@ -46,29 +46,26 @@ def draw_menu():
 
 
 def show_projections(projections: list[Projection]) -> None:
-    """Show a set of films to the user."""
+    """Show a set of films to the user"""
 
-    table = Table(show_header=True)
-    table.add_column("Cinema", justify="left", style="bright_cyan")
-    table.add_column("Film", style="bright_magenta")
-    table.add_column("Duration")
-    table.add_column("Genre")
-    table.add_column("Language")
-    table.add_column("Schedule", style="green")
+    table = Table(show_header=True, header_style="bold magenta")
+    table.add_column("Cinema", justify="left")
+    table.add_column("Pel·lícula")
+    table.add_column("Durada")
+    table.add_column("Horari")
 
+    time = 18
     for i, projection in enumerate(sorted(projections, key=lambda x: x.time)):
         table.add_row(
             projection.cinema.name,
             projection.film.title,
             str(projection.duration),
-            projection.film.genre[0],
-            str(projection.language),
             "{:<02d}".format(projection.time[0])
             + ":"
             + "{:<02d}".format(projection.time[1]),
         )
 
-    console.print("\nBillboard in increasing order by schedule\n")
+    console.print("\nCartellera en horari no decreixent:\n")
     console.print(table)
 
 
@@ -102,8 +99,6 @@ def search_billboard(billboard: Billboard) -> None:
 def show_film_titles(
     billboard: Billboard, osmx_g: OsmnxGraph, city_g: CityGraph
 ) -> None:
-    """Show all film titles from the films that are available."""
-
     for title in billboard.films_titles:
         console.print(title.capitalize())
     Prompt.ask("\nPress enter to continue...")
@@ -111,21 +106,17 @@ def show_film_titles(
 
 
 def get_valid_duration() -> int:
-    """Returns the time input given by the user."""
-
     try:
         durada = int(
-            Prompt.ask("Introduce the maximimum duration of the film you want to watch")
+            Prompt.ask("Introduce the maximimum duration of the film you \
+                        want to watch")
         )
         return durada
-    except Exception as error:
-        console.print("An error ocurred: ", type(error).__name__)
+    except:
         return get_valid_duration()
 
 
 def get_valid_film_title(billboard: Billboard) -> str | None:
-    """Returns the title given by the user, in case it's from a film t'hat exists."""
-
     film = Prompt.ask("Introduce the film you want to see")
 
     if film.lower() not in billboard.films_titles:
@@ -145,27 +136,22 @@ def get_valid_coordinates() -> Coord:
     )
 
     try:
-        ubi_l = ubi.split(",")
-        lat, long = float(ubi_l[0]), float(ubi_l[1])
+        ubi = ubi.split(",")
+        lat, long = float(ubi[0]), float(ubi[1])
         return lat, long
 
-    except Exception as error:
-        console.print("An error ocurred: ", type(error).__name__)
+    except:
         Prompt.ask("Please, enter the correct format, press enter to continue")
         return get_valid_coordinates()
 
 
 def get_valid_time(question: str) -> tuple[int, int]:
-    """Asks the time they want to leave. If it's given in a correct format it's returned.
-    Otherwise the user is asked again"""
-
     leave_time = Prompt.ask("{0}, ex: 19:30".format(question))
     try:
         hour, minute = leave_time.split(":")
         leaving_time: tuple[int, int] = (int(hour), int(minute))
         return leaving_time
-    except Exception as error:
-        console.print("An error ocurred: ", type(error).__name__)
+    except:
         Prompt.ask("Please, enter the correct format, press enter to continue")
         return get_valid_time(question)
 
@@ -195,7 +181,8 @@ def find_valid_projections(
                 continue
 
             path = find_path(
-                osmx_g, city_g, starting_coord, CINEMAS_LOCATION[projection.cinema.name]
+                osmx_g, city_g, starting_coord,
+                CINEMAS_LOCATION[projection.cinema.name]
             )
             if path[1] <= calculate_time(leaving_time, projection.time):
                 valid_projections.append((projection, path))
@@ -204,8 +191,6 @@ def find_valid_projections(
 
 
 def show_find_closest_cinema_menu() -> None:
-    """Shows the menu from 4th option (choose a cinema)."""
-
     console.clear()
     options = ["1 Show films available", "2 Choose film", "3 Exit"]
     console.print(
@@ -245,8 +230,7 @@ def show_projections_path_info(
 def search_closest_cinema(
     billboard: Billboard, osmx_g: OsmnxGraph, city_g: CityGraph
 ) -> None:
-    """Driver code of the funcionality about finding the closest cinema
-    from a given position, film and schedule."""
+    """"""
 
     show_find_closest_cinema_menu()
 
@@ -267,7 +251,8 @@ def search_closest_cinema(
         # No matching projections
         elif len(valid_projections) == 0:
             Prompt.ask(
-                "Sorry, there are no projections available given these constraints"
+                "Sorry, there are no projections available given these\
+                constraints"
             )
             search_closest_cinema(billboard, osmx_g, city_g)
 
@@ -276,11 +261,14 @@ def search_closest_cinema(
 
             show_projections_path_info(valid_projections)
 
-            num_projection = int(Prompt.ask("Choose the projection that you like!"))
+            num_projection = int(Prompt.ask(
+                "Choose the projection that you like!"
+            ))
 
-            plot_path(city_g, valid_projections[num_projection - 1][1], "path.png")
+            plot_path(city_g, valid_projections[num_projection - 1][1],
+                      "path.png")
 
-            path_img = mpimg.imread("path.png")
+            path_img = mpimg.imread('path.png')
             plt.imshow(path_img)
             plt.show()
 
@@ -288,13 +276,8 @@ def search_closest_cinema(
         draw_menu()
 
 
-def handle_input(
-    key: str,
-    billboard: Billboard,
-    buses_g,
-    osmx_g,
-    city_g,
-) -> None:
+def handle_input(key: str, billboard: Billboard, buses_g: BusesGraph,
+                 osmx_g: OsmnxGraph, city_g: CityGraph) -> None:
     """Function that handles user input."""
 
     if key == "1":
@@ -323,12 +306,12 @@ def main() -> None:
         if key == "6":
             console.print(
                 Panel(
-                    "See you soon! 👋 \nPlease rate our app in: https://newskit.social/blog/posts/cinebusfeedback",
+                    "See you soon! 👋 \nPlease rate our app in: \
+                    https://newskit.social/blog/posts/cinebusfeedback",
                     expand=False,
                 ),
             )
             return
-
         handle_input(key, billboard, buses_g, osmx_g, city_g)
 
 
