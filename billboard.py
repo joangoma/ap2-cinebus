@@ -37,7 +37,7 @@ CINEMAS_LOCATION: dict[str, tuple[float, float]] = {
 
 
 def calculate_time(starting_time: tuple[int, int],
-                    ending_time: tuple[int, int]) -> int:
+                   ending_time: tuple[int, int]) -> int:
     # afegir docstring
     start_minutes = starting_time[0] * 60 + starting_time[1]
     end_minutes = ending_time[0] * 60 + ending_time[1]
