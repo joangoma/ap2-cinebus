@@ -22,13 +22,13 @@ Run the `demo.py` file, and then the necessary graphs will be created to calcula
 
 ### Features of the demo
 
-1. **See Billboard**: View the current billboard displaying a list of films currently being screened in cinemas.
+1. **Show billboard**: View the current billboard displaying a list of films currently being screened in cinemas.
 
-2. **Search in Billboard**: Search for a film in the billboard based on its title, duration, or starting time. This feature helps users find specific films that match their preferences.
+2. **Find film**: Search for a film in the billboard based on its title, duration, or starting time. This feature helps users find specific films that match their preferences.
 
-3. **See Buses Graph**: Explore the bus network graph of the city. This feature displays the available bus routes and helps users plan their journey to the cinema by public transportation.
+3. **Show Buses Graph**: Explore the bus network graph of the city. This feature displays the available bus routes and helps users plan their journey to the cinema by public transportation.
 
-4. **See City Graph**: Visualize the city graph, which showcases different locations. This feature allows users to familiarize themselves with the city and make informed decisions about their movie-going experience.
+4. **Show City Graph**: Visualize the city graph, which showcases different locations. This feature allows users to familiarize themselves with the city and make informed decisions about their movie-going experience.
 
 5. **Choose Film and Go to the Cinema**: Once users have found a film they want to watch, this option provides guidance on the best route to the closest cinema where the film is being screened. Users can select their preferred film inside this option, and follow the directions to reach the cinema conveniently.
 
