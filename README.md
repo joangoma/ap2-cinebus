@@ -24,7 +24,7 @@ Run the `demo.py` file, and then the necessary graphs will be created to calcula
 
 1. **Show billboard**: View the current billboard displaying a list of films currently being screened in cinemas.
 
-2. **Find film**: Search for a film in the billboard based on its title, duration, or starting time. This feature helps users find specific films that match their preferences.
+2. **Find film**: Search for a film in the billboard based on its title, duration, or starting time. This feature helps users find specific films that match their preferences. **Note:** It can happen that some films durations are extremely short. This is a problem from the provider of the film data.
 
 3. **Show Buses Graph**: Explore the bus network graph of the city. This feature displays the available bus routes and helps users plan their journey to the cinema by public transportation.
 
