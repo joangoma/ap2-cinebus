@@ -27,9 +27,10 @@ FILE_OSMNX_NAME = "OSMNX_GRAPH"
 FILE_CITY_NAME = "CITY_GRAPH"
 
 """
+COORDINATES SYSTEMS
 OSM -> 41, 2 latitud y longitud
-STATICMAP -> 2, 41 (LON- LAT)
 BUSES -> 41, 2 UTM
+STATICMAP -> 2, 41 (LON- LAT)
 ox.distance.nearest_nodes -> 2, 41 LON - LAT
 """
 
@@ -50,8 +51,7 @@ def get_only_first_edge_and_del_geometry(g: OsmnxGraph) -> OsmnxGraph:
 
 
 def get_osmnx_graph() -> OsmnxGraph:
-    """Returns a graph of the streets of Barcelona.
-    Get_only_first_edge should be tested"""
+    """Returns a graph of the streets of Barcelona."""
     path = os.getcwd() + "\\" + FILE_OSMNX_NAME
     if os.path.exists(path):
         return load_graph(FILE_OSMNX_NAME)
@@ -81,75 +81,46 @@ def load_graph(filename: str) -> OsmnxGraph | CityGraph:
     return pickle.load(pickle_in)
 
 
-def join_parada_cruilla(city, buses, cruilles) -> None:
-    """Each stop is joined with the closest crosswalk. For simplicity, the
-    type of the edges between them is Carrer. ox.distance.nearest_nodes uses
-    lon-lat, so we swap the coordinates
+def join_stop_crosswalk(city, buses, cruilles) -> None:
+    """Each stop is joined with the closest crosswalk. The
+    type of the edges between them is Carrer.
+
+    The weight is also set.
+
+    note: ox.distance.nearest_nodes uses lon-lat, so we swap the coordinates
     """
 
     parades = sorted(buses.nodes(data=True))
     X = [parada[1]["coord"][1] for parada in parades]
     Y = [parada[1]["coord"][0] for parada in parades]
 
-    city.add_edges_from(
-        zip(
-            [parada[0] for parada in parades],
-            ox.distance.nearest_nodes(cruilles, X, Y, return_dist=False),
-        ),
-        type="Carrer",
-    )
+    nearest_cruilles = ox.distance.nearest_nodes(cruilles, X, Y,
+                                                 return_dist=False)
+    weights = [haversine(parada[1]["coord"], city.nodes[cruilla]["coord"])
+               / WALK_SPEED * 60
+               for parada, cruilla in zip(parades, nearest_cruilles)]
+
+    city.add_weighted_edges_from(list(
+                                      zip([parada[0] for parada in parades],
+                                          nearest_cruilles, weights)
+                                     ), type="Carrer")
 
 
 def get_weight(a, b, attr):
     """Used to estimate the time taken to go from one bus stop to another."""
-    return attr["weight"] * WALK_SPEED / BUS_SPEED
+
+    if attr["type"] == "Carrer":
+        return attr["weight"] * WALK_SPEED / BUS_SPEED
+
+    elif attr["type"] == "Bus":
+        return attr["weight"]
 
 
-def add_weights(city: CityGraph) -> None:
-    """The attribute weight of each edge is set.
+def group_substops(city: CityGraph) -> dict[str, list[str]]:
+    """Returns a dictionary where the keys are the stops and the values
+    the substops of that stop which correspond to each line"""
 
-    parada1-liniaA i parada1-liniaB tenen weight = delay
-    parada1-liniaA i parada2-liniaA tenen weight = distancia
-
-    NO hi ha una aresta entre parada1-liniaA i parada2-liniaB
-
-    Primer es calculen els pesos dels carrers ja que es necessiten per
-    calcular els pesos dels busos
-    """
-
-    # Per calcular dist entre parades es necessita dist entre cruilles
-    for edge in city.edges(data=True):
-        if edge[2]["type"] == "Carrer":
-            # haversine returns the distance in km
-            city.edges[edge[0], edge[1]]["weight"] = (
-                haversine(city.nodes[edge[0]]["coord"],
-                          city.nodes[edge[1]]["coord"]) / WALK_SPEED * 60
-            )
-
-    # add weight betwen stops of the same line
-    for edge in city.edges(data=True):
-        if edge[2]["type"] == "Bus":
-            # we get the closest crosswalk to the stop (it is already found)
-            # from all the edges of the stops is the only one of type Carrer
-            cruilla1 = list(
-                filter(
-                    lambda edge_parada: edge_parada[2]["type"] == "Carrer",
-                    city.edges(edge[0], data=True),
-                )
-            )[0][1]
-            cruilla2 = list(
-                filter(
-                    lambda edge_parada: edge_parada[2]["type"] == "Carrer",
-                    city.edges(edge[1], data=True),
-                )
-            )[0][1]
-
-            city.edges[edge[0], edge[1]]["weight"] = nx.shortest_path_length(
-                city, source=cruilla1, target=cruilla2, weight=get_weight
-            )
-
-    # edges between substops of a same stop are added with weight = delay
-    parades: dict[str, list[str]] = {}  # substops are grouped by stops
+    parades: dict[str, list[str]] = {}
     for node in city.nodes(data=True):
         if node[1]["type"] == "Parada":
             parada = node[0].split("-")[0]
@@ -158,17 +129,59 @@ def add_weights(city: CityGraph) -> None:
             else:
                 parades[parada].append(node[0])
 
+    return parades
+
+
+def add_weights_buses(city: CityGraph) -> None:
+    """The attribute weight of edges connecting stops is set.
+
+    stop1-lineA and stop1-lineB edge has weight = BUS_WAIT_TIME
+    stop1-lineA and stop2-lineA edge has weight = distance
+
+    There is NO edge between stop1-lineA and stop2-lineB
+    (but one can travel between them with the route
+    stop1-lineA -> stop1-lineB -> stop2-lineB or
+    stop1-lineA -> stop2-lineA -> stop2-lineB)
+    """
+
+    # add weight betwen stops of the same line
+    for edge in city.edges(data=True):
+        if edge[2]["type"] == "Bus":
+            # we get the closest crosswalk to the stop (it is already found)
+            # from all the edges of the stops is the only one of type Carrer
+            cruilla1 = list(
+                            filter(lambda edge_parada:
+                                   edge_parada[2]["type"] == "Carrer",
+                                   city.edges(edge[0], data=True)
+                                   )
+            )[0][1]
+            cruilla2 = list(
+                            filter(lambda edge_parada:
+                                   edge_parada[2]["type"] == "Carrer",
+                                   city.edges(edge[1], data=True),
+                                   )
+            )[0][1]
+
+            city.edges[edge[0], edge[1]]["weight"] = nx.shortest_path_length(
+                city, source=cruilla1, target=cruilla2, weight=get_weight
+            )
+
+    # edges between substops of the same stop are added (weight=BUS_WAIT_TIME)
+    # substops are grouped by stops
+    parades: dict[str, list[str]] = group_substops(city)
+
+    # an edge with weight = BUS_WAIT_TIME is added between every pair of
+    # substops of the same stop
     for subparades in parades.values():
         city.add_edges_from(itertools.combinations(subparades, 2),
-                            weight=BUS_WAIT_TIME)
+                            weight=BUS_WAIT_TIME, type="Transbord")
 
 
 def build_city_graph(g1: OsmnxGraph, g2: BusesGraph) -> CityGraph:
     """If the citygraph is stored in FILE_CITY_NAME, it is loaded. Otherwise,
     g1 and g2 are merged to build a Citygraph and it is saved in FILE_CITY_NAME
 
-    Types of nodes and edges are added
-    (nodes: Cruilla/Parada, edges: Carrer/Bus)
+    Nodes' and edges' types are added, nodes: Cruilla/Parada, edges: Carrer/Bus
     Coordinates of osmnxgraph nodes are swapped. We also ignore street count.
     {'y': 41.4259553, 'x': 2.1866781, 'street_count': 3}) -> format anterior
     """
@@ -177,7 +190,7 @@ def build_city_graph(g1: OsmnxGraph, g2: BusesGraph) -> CityGraph:
     if os.path.exists(path):
         return load_graph(FILE_CITY_NAME)
 
-    city: CityGraph = CityGraph()  # ns si es pot escriure així
+    city: CityGraph = CityGraph()
 
     # nodes g1:
     for node in g1.nodes(data=True):
@@ -190,24 +203,20 @@ def build_city_graph(g1: OsmnxGraph, g2: BusesGraph) -> CityGraph:
     # edges g1:
     for edge in g1.edges(data=True):
         if edge[0] != edge[1]:  # there were loops in city
-            city.add_edge(
-                edge[0],
-                edge[1],
-                name=edge[2].get("name", None),
-                type="Carrer",
-                weight=float("inf"),
-            )
+            city.add_edge(edge[0], edge[1],
+                          name=edge[2].get("name", None),
+                          type="Carrer",
+                          weight=haversine(city.nodes[edge[0]]["coord"],
+                                           city.nodes[edge[1]]["coord"])
+                          / WALK_SPEED * 60
+                          )
 
     # edges g2:
-    city.add_edges_from(
-        g2.edges(data=True), type="Bus", weight=float("inf")
-    )  # conservem totes les dades
+    city.add_edges_from(g2.edges(data=True), type="Bus", weight=float("inf"))
 
-    join_parada_cruilla(city, g2, g1)
+    join_stop_crosswalk(city, g2, g1)
 
-    # PODRIEM AFEGIR EL WEIGHT DELS CARRERS QUAN AFEGIM ELS EDGES I
-    # Q LA FUNCIO ES DIGUI ADD_WEIGHTS_BUSES
-    add_weights(city)  # com mes valors poguem tenir precalculats millor
+    add_weights_buses(city)
 
     save_graph(city, FILE_CITY_NAME)
 
@@ -221,6 +230,7 @@ def find_path(ox_g: OsmnxGraph, g: CityGraph, src: Coord, dst: Coord) -> Path:
     shortest_path: If the source and target are both specified, returns
      a single list of nodes in a shortest path from the source to the target.
     """
+
     # distance.nearest_nodes uses lon-lat coordinates, so we need to swap them
     cruilla_src, cruilla_dst = ox.distance.nearest_nodes(
         ox_g, [src[1], dst[1]], [src[0], dst[0]], return_dist=False
@@ -255,8 +265,10 @@ def plot_city(g: CityGraph, filename: str) -> None:
         elif node[1]["type"] == "Cruilla":
             color = "blue"
 
-        map.add_marker(CircleMarker(g[1]["coord"], color, 3))
-
+        # we swap the components (staticmap works with lon-lat coordinates
+        map.add_marker(CircleMarker([node[1]["coord"][1], node[1]["coord"][0]],
+                                    color, 3)
+                       )
     # draw edges
     for edge in g.edges(data=True):
         if edge[2]["type"] == "Carrer":
@@ -265,7 +277,7 @@ def plot_city(g: CityGraph, filename: str) -> None:
         elif edge[2]["type"] == "Bus":
             color = "green"
 
-        # we swap the components (staticmap works  with lon-lat coordinates
+        # we swap the components (staticmap works with lon-lat coordinates
         coord_1 = (g.nodes[edge[0]]["coord"][1], g.nodes[edge[0]]["coord"][0])
         coord_2 = (g.nodes[edge[1]]["coord"][1], g.nodes[edge[1]]["coord"][0])
         map.add_line(Line([coord_1, coord_2], color, 2))
