@@ -127,11 +127,11 @@ def add_weights(city: CityGraph) -> None:
                           city.nodes[edge[1]]["coord"]) / WALK_SPEED * 60
             )
 
-    # afegeixo weight entre parades duna mateixa linia
+    # add weight betwen stops of the same line
     for edge in city.edges(data=True):
         if edge[2]["type"] == "Bus":
-            # aconsegueixo la cruilla mes propera al bus (de tots els edges
-            # de la parada es lunic del tipus carrer)
+            # we get the closest crosswalk to the stop (it was previously found)
+            #from all the edges of the stops is the only one of type Carrer
             cruilla1 = list(
                 filter(
                     lambda edge_parada: edge_parada[2]["type"] == "Carrer",
@@ -149,8 +149,8 @@ def add_weights(city: CityGraph) -> None:
                 city, source=cruilla1, target=cruilla2, weight=get_weight
             )
 
-    # afegeixo arestes entre subparades duna mateixa parada amb weight = delay
-    parades: dict[str, list[str]] = {}  # agrupo les subparades per parades
+    # edges between substops of a same stop are added with weight = delay
+    parades: dict[str, list[str]] = {}  # substops are grouped by stops
     for node in city.nodes(data=True):
         if node[1]["type"] == "Parada":
             parada = node[0].split("-")[0]
@@ -190,7 +190,7 @@ def build_city_graph(g1: OsmnxGraph, g2: BusesGraph) -> CityGraph:
 
     # edges g1:
     for edge in g1.edges(data=True):
-        if edge[0] != edge[1]:  # hi havia loops a city
+        if edge[0] != edge[1]:  # there were loops in city
             city.add_edge(
                 edge[0],
                 edge[1],
@@ -265,7 +265,7 @@ def plot(g: CityGraph, filename: str) -> None:
         elif edge[2]["type"] == "Bus":
             color = "green"
 
-        # we swap the components
+        # we swap the components (staticmap works  with lon-lat coordinates
         coord_1 = (g.nodes[edge[0]]["coord"][1], g.nodes[edge[0]]["coord"][0])
         coord_2 = (g.nodes[edge[1]]["coord"][1], g.nodes[edge[1]]["coord"][0])
         map.add_line(Line([coord_1, coord_2], color, 2))
@@ -274,11 +274,11 @@ def plot(g: CityGraph, filename: str) -> None:
     image.save(filename)
 
 
-def get_colors_from_path(g, p: Path) -> dict[str | int, tuple[int, int, int]]:
+def get_colors_from_path(g: CityGraph, p: Path) -> dict[str | int, tuple[int, int, int]]:
     """Returns a dictionary with the colors of each line. The colors
     are set randomly."""
 
-    # p[0] es una llista
+    # p[0] is a list
     linies = {g.nodes[node].get("linia", None) for node in p[0]}
 
     return {
@@ -311,7 +311,7 @@ def plot_path(g: CityGraph, p: Path, filename: str, *args) -> None:
             coord_1 = (node["coord"][1], node["coord"][0])
             coord_2 = (prev_node["coord"][1], prev_node["coord"][0])
 
-            # si un dels dos es cruilla s'ha d'anar a peu -> color blau
+            # if one of the nodes is a crosswalk -> walk -> color blau
             if node["type"] == "Cruilla" or prev_node["type"] == "Cruilla":
                 color = "blue"
             else:
