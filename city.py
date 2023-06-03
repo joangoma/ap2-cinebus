@@ -15,7 +15,6 @@ from buses import *
 
 OsmnxGraph: TypeAlias = nx.MultiDiGraph
 CityGraph: TypeAlias = nx.Graph
-# Coord : TypeAlias = tuple[float, float]   # (latitude, longitude)
 Path: TypeAlias = tuple[list[T], int]
 
 WALK_SPEED = 5  # km/h
@@ -30,24 +29,19 @@ FILE_CITY_NAME = "CITY_GRAPH"
 COORDINATES SYSTEMS
 OSM -> 41, 2 latitud y longitud
 BUSES -> 41, 2 UTM
+haversine -> lat - lon
 STATICMAP -> 2, 41 (LON- LAT)
 ox.distance.nearest_nodes -> 2, 41 LON - LAT
 """
 
 
-def get_only_first_edge_and_del_geometry(g: OsmnxGraph) -> OsmnxGraph:
-    # for each node and its neighbours' information ...
-    for u, nbrs_dict in g.adjacency():
-        # print(u, nbrs_dict)
-        # for each adjacent node v and its (u, v) edges' information ...
-        for v, edges_dict in nbrs_dict.items():
-            # print('   ', v)
-            # ox graphs are multigraphs but we just consider their first edge
-            e_attr = edges_dict[0]  # eattr contains attrib of the first edge
-            # geometry information is unnecessary and takes a lot of space
-            if "geometry" in e_attr:
-                del e_attr["geometry"]
-            # print('        ', e_attr)
+def delete_geometry(g: OsmnxGraph) -> None:
+    '''Deletes the attribute geometry, as we are not interested
+    and takes a lot of space
+    '''
+    for u, v, key, geom in graph.edges(data="geometry", keys=True):
+        if geom is not None:
+            del (graph[u][v][key]["geometry"])
 
 
 def get_osmnx_graph() -> OsmnxGraph:
@@ -63,7 +57,7 @@ def get_osmnx_graph() -> OsmnxGraph:
             "Barcelona", network_type="walk", simplify=True
         )
 
-        get_only_first_edge_and_del_geometry(g)
+        delete_geometry(g)
 
         save_graph(g, FILE_OSMNX_NAME)
         return g
@@ -109,7 +103,7 @@ def join_stop_crosswalk(city, buses, cruilles) -> None:
                                      ), type="Carrer")
 
 
-def get_weight(a, b, attr):
+def get_weight_buses(a, b, attr):
     """Used to estimate the time taken to go from one bus stop to another."""
 
     if attr["type"] == "Carrer":
@@ -166,7 +160,7 @@ def add_weights_buses(city: CityGraph) -> None:
             )[0][1]
 
             city.edges[edge[0], edge[1]]["weight"] = nx.shortest_path_length(
-                city, source=cruilla1, target=cruilla2, weight=get_weight
+                city, source=cruilla1, target=cruilla2, weight=get_weight_buses
             )
 
     # edges between substops of the same stop are added (weight=BUS_WAIT_TIME)
@@ -212,7 +206,7 @@ def build_city_graph(g1: OsmnxGraph, g2: BusesGraph) -> CityGraph:
                           weight=haversine(city.nodes[edge[0]]["coord"],
                                            city.nodes[edge[1]]["coord"])
                           / WALK_SPEED * 60
-            )
+                          )
 
     # edges g2:
     city.add_edges_from(g2.edges(data=True), type="Bus", weight=float("inf"))
