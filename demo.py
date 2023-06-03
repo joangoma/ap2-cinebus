@@ -159,15 +159,22 @@ def get_valid_time(question: str) -> tuple[int, int]:
 def get_valid_option(valid_opt_l: int) -> int:
 
     try:
-        num_projection = int(Prompt.ask("Choose the projection that you like!"))
+        num_projection = int(
+                            Prompt.ask("Choose the projection that you like!")
+                            )
         if num_projection > valid_opt_l or num_projection <= 0:
             Prompt.ask("Please, enter a valid option, press enter to continue")
             return get_valid_option(valid_opt_l)
         else:
             return num_projection
 
+    except:
+        Prompt.ask("Please, enter a number. Press enter to continue")
+        return get_valid_option(valid_opt_l)
 
-def get_valid_projections(billboard: Billboard, osmx_g: OsmnxGraph,
+
+def get_valid_projections(
+        billboard: Billboard, osmx_g: OsmnxGraph,
         city_g: CityGraph) -> list[tuple[Projection, Path]] | None:
     """Returns a list of all the projections of a given film that you
     can arrive given a starting time"""
@@ -261,8 +268,8 @@ def search_closest_cinema(
         # No matching projections
         elif len(valid_projections) == 0:
             Prompt.ask(
-                "Sorry, there are no projections available given these\
-                constraints"
+                """Sorry, there are no projections available
+                given these constraints"""
             )
             search_closest_cinema(billboard, osmx_g, city_g)
 
