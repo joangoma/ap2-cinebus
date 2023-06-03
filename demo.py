@@ -156,9 +156,19 @@ def get_valid_time(question: str) -> tuple[int, int]:
         return get_valid_time(question)
 
 
-def find_valid_projections(
-    billboard: Billboard, osmx_g: OsmnxGraph, city_g: CityGraph
-) -> list[tuple[Projection, Path]] | None:
+def get_valid_option(valid_opt_l: int) -> int:
+
+    try:
+        num_projection = int(Prompt.ask("Choose the projection that you like!"))
+        if num_projection > valid_opt_l or num_projection <= 0:
+            Prompt.ask("Please, enter a valid option, press enter to continue")
+            return get_valid_option(valid_opt_l)
+        else:
+            return num_projection
+
+
+def find_valid_projections(billboard: Billboard, osmx_g: OsmnxGraph,
+        city_g: CityGraph) -> list[tuple[Projection, Path]] | None:
     """Returns a list of all the projections of a given film that you
     can arrive given a starting time"""
 
@@ -261,9 +271,7 @@ def search_closest_cinema(
 
             show_projections_path_info(valid_projections)
 
-            num_projection = int(Prompt.ask(
-                "Choose the projection that you like!"
-            ))
+            num_projection = get_valid_option(len(valid_projections))
 
             plot_path(city_g, valid_projections[num_projection - 1][1],
                       "path.png")
