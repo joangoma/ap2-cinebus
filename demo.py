@@ -291,7 +291,7 @@ def handle_input(key: str, billboard: Billboard, buses_g: BusesGraph,
     elif key == "5":
         search_closest_cinema(billboard, osmx_g, city_g)
 
-    Prompt.ask("\nPress any key to return to the main page")
+    Prompt.ask("\nPress enter to return to the main page")
 
 
 def main() -> None:
