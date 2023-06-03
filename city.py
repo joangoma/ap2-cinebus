@@ -89,17 +89,14 @@ def load_graph(filename: str) -> OsmnxGraph | CityGraph:
 
 def join_stop_crosswalk(city, buses, cruilles) -> None:
     """Each stop is joined with the closest crosswalk. The
-    type of the edges between them is Carrer.
-
-    The weight is also set.
-
-    note: ox.distance.nearest_nodes uses lon-lat, so we swap the coordinates
+    type of the edges between them is "Carrer". The weight is also set.
     """
 
     parades = sorted(buses.nodes(data=True))
     X = [parada[1]["coord"][1] for parada in parades]
     Y = [parada[1]["coord"][0] for parada in parades]
 
+    # ox.distance.nearest_nodes uses lon-lat, so we swap the coordinates
     nearest_cruilles = ox.distance.nearest_nodes(cruilles, X, Y,
                                                  return_dist=False)
     weights = [haversine(parada[1]["coord"], city.nodes[cruilla]["coord"])
