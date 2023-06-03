@@ -18,6 +18,8 @@ console = Console()
 
 # Function to draw the menu
 def draw_menu():
+    """Shows the main menu."""
+    
     console.clear()
     MARKDOWN = """
 # CINE BUS 🚌 🎥
@@ -99,6 +101,8 @@ def search_billboard(billboard: Billboard) -> None:
 def show_film_titles(
     billboard: Billboard, osmx_g: OsmnxGraph, city_g: CityGraph
 ) -> None:
+    """Show all film titles from the films that are available."""
+
     for title in billboard.films_titles:
         console.print(title.capitalize())
     Prompt.ask("\nPress enter to continue...")
@@ -106,6 +110,8 @@ def show_film_titles(
 
 
 def get_valid_duration() -> int:
+    """Returns the time input given by the user."""
+
     try:
         durada = int(
             Prompt.ask("""Introduce the maximimum duration of the film you
@@ -117,6 +123,8 @@ def get_valid_duration() -> int:
 
 
 def get_valid_film_title(billboard: Billboard) -> str | None:
+    """Returns the title given by the user, in case it's from a film t'hat exists."""
+
     film = Prompt.ask("Introduce the film you want to see")
 
     if film.lower() not in billboard.films_titles:
@@ -146,6 +154,9 @@ def get_valid_coordinates() -> Coord:
 
 
 def get_valid_time(question: str) -> tuple[int, int]:
+    """Asks the time they want to leave. If it's given in a correct format it's returned.
+    Otherwise the user is asked again"""
+    
     leave_time = Prompt.ask("{0}, ex: 19:30".format(question))
     try:
         hour, minute = leave_time.split(":")
@@ -157,7 +168,9 @@ def get_valid_time(question: str) -> tuple[int, int]:
 
 
 def get_valid_option(valid_opt_l: int) -> int:
-
+    """Asks the time they want to leave. If it's given in a correct format it's returned.
+    Otherwise the user is asked again"""
+    
     try:
         num_projection = int(
                             Prompt.ask("Choose the projection that you like!")
@@ -208,6 +221,8 @@ def get_valid_projections(
 
 
 def show_find_closest_cinema_menu() -> None:
+    """Shows the menu from 5th option (choose a cinema)."""
+
     console.clear()
     options = ["1 Show films available", "2 Choose film", "3 Exit"]
     console.print(
@@ -247,7 +262,8 @@ def show_projections_path_info(
 def search_closest_cinema(
     billboard: Billboard, osmx_g: OsmnxGraph, city_g: CityGraph
 ) -> None:
-    """"""
+    """Driver code of the funcionality about finding the closest cinema
+    from a given position, film and schedule."""
 
     show_find_closest_cinema_menu()
 
@@ -313,6 +329,8 @@ def handle_input(key: str, billboard: Billboard, buses_g: BusesGraph,
 
 
 def main() -> None:
+    """Driver Code."""
+    
     billboard: Billboard = read_billboard()
     buses_g: BusesGraph = get_buses_graph()
     osmx_g: OsmnxGraph = get_osmnx_graph()
