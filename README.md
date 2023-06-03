@@ -37,7 +37,10 @@ Run the `demo.py` file, and then the necessary graphs will be created to calcula
 ![alt text](5.png)
 ![alt text](6.png)
 
+## Authors
+Joan Gomà and Laia Mogas
 
+Data Science and Engineering students at Universitat Politècnica de Catalunya.
 
 ## License
 
