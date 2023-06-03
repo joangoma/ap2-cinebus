@@ -47,7 +47,9 @@ def delete_geometry(g: OsmnxGraph) -> None:
 def get_osmnx_graph() -> OsmnxGraph:
     """Returns a graph of the streets of Barcelona. If it is in a file
     in the current directory, it is loaded. Otherwise it is downloaded from
-    internet and saved in FILE_OSMNX_NAME
+    internet and saved in FILE_OSMNX_NAME.
+
+    The graph returned has no geometry attribute nor self loops.
     """
     path = os.getcwd() + "\\" + FILE_OSMNX_NAME
     if os.path.exists(path):
@@ -58,6 +60,9 @@ def get_osmnx_graph() -> OsmnxGraph:
         )
 
         delete_geometry(g)
+
+        #there were self loops in g
+        g.remove_edges_from(nx.selfloop_edges(g))
 
         save_graph(g, FILE_OSMNX_NAME)
         return g
@@ -74,8 +79,16 @@ def save_graph(g: OsmnxGraph | CityGraph, filename: str) -> None:
 def load_graph(filename: str) -> OsmnxGraph | CityGraph:
     """Returns the graph stored in file filename"""
 
-    pickle_in = open(filename, "rb")
-    return pickle.load(pickle_in)
+    path = os.getcwd() + "\\" + FILE_OSMNX_NAME
+    assert os.path.exists(path), f'Error: {filename} does not exist''
+
+    try:
+        pickle_in = open(filename, "rb")
+        return pickle.load(pickle_in)
+
+    except Exception:
+        print("Could not retrieve the graph")
+
 
 
 def join_stop_crosswalk(city, buses, cruilles) -> None:
@@ -199,14 +212,14 @@ def build_city_graph(g1: OsmnxGraph, g2: BusesGraph) -> CityGraph:
 
     # edges g1:
     for edge in g1.edges(data=True):
-        if edge[0] != edge[1]:  # there were loops in city
-            city.add_edge(edge[0], edge[1],
-                          name=edge[2].get("name", None),
-                          type="Carrer",
-                          weight=haversine(city.nodes[edge[0]]["coord"],
-                                           city.nodes[edge[1]]["coord"])
-                          / WALK_SPEED * 60
-                          )
+
+        city.add_edge(edge[0], edge[1],
+                      name=edge[2].get("name", None),
+                      type="Carrer",
+                      weight=haversine(city.nodes[edge[0]]["coord"],
+                                       city.nodes[edge[1]]["coord"])
+                      / WALK_SPEED * 60
+                      )
 
     # edges g2:
     city.add_edges_from(g2.edges(data=True), type="Bus", weight=float("inf"))
