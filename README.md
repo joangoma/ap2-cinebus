@@ -19,18 +19,25 @@ All of them can be installed with `pip3 install`. You can use the `requirements.
 
 ## Usage
 Run the `demo.py` file, and then the necessary graphs will be created to calculate the fastest way to get to the cinema. This may take a while. Afterwards, the main menu with all the options will appear. 
+![alt text]([http://url/to/img.png](https://github.com/joangoma/ap2-cinebus/blob/main/menu.png))
 
 ### Features of the demo
 
 1. **Show billboard**: View the current billboard displaying a list of films currently being screened in cinemas.
+![alt text]([https://github.com/joangoma/ap2-cinebus/blob/main/billboard.png))
 
 2. **Find film**: Search for a film in the billboard based on its title, duration, or starting time. This feature helps users find specific films that match their preferences. **Note:** It can happen that some films durations are extremely short. This is a problem from the provider of the film data.
+![alt text]([https://github.com/joangoma/ap2-cinebus/blob/main/filterbillboard.png))
 
 3. **Show Buses Graph**: Explore the bus network graph of the city. This feature displays the available bus routes and helps users plan their journey to the cinema by public transportation.
 
 4. **Show City Graph**: Visualize the city graph, which showcases different locations. This feature allows users to familiarize themselves with the city and make informed decisions about their movie-going experience.
 
 5. **Choose Film and Go to the Cinema**: Once users have found a film they want to watch, this option provides guidance on the best route to the closest cinema where the film is being screened. Users can select their preferred film inside this option, and follow the directions to reach the cinema conveniently.
+![alt text]([https://github.com/joangoma/ap2-cinebus/blob/main/5.png))
+![alt text]([https://github.com/joangoma/ap2-cinebus/blob/main/cami.png))
+
+
 
 ## License
 
