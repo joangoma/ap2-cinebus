@@ -6,8 +6,8 @@ Find the movie that best suits your preferences and go there using the Barcelona
 ## Getting started
 
 The project is divided into the following parts:
-- `billboard.py`: retrieves and processes the data from Sensacine related to films, projections and cinemas
-- `buses.py`: downloads the data from the AMB website and generates a graph with th bus stops of Barcelona
+- `billboard.py`: retrieves and processes the data from Sensacine related to films, projections and cinemas.
+- `buses.py`: downloads the data from the AMB website and generates a graph with th bus stops of Barcelona.
 - `city.py`: merges the buses graph with a graph of Barcelona and contains the functions needed to find the shortest path between two coordinates.
 - `demo.py`: contains the interface of the application, allowing the user to interact with the different functionalities in a simple and intuitive way.
 
