@@ -39,9 +39,9 @@ def delete_geometry(g: OsmnxGraph) -> None:
     '''Deletes the attribute geometry, as we are not interested
     and takes a lot of space
     '''
-    for u, v, key, geom in graph.edges(data="geometry", keys=True):
+    for u, v, key, geom in g.edges(data="geometry", keys=True):
         if geom is not None:
-            del (graph[u][v][key]["geometry"])
+            del (g[u][v][key]["geometry"])
 
 
 def get_osmnx_graph() -> OsmnxGraph:
