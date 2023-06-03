@@ -16,6 +16,7 @@ The application uses the following libraries (see the exact version in the `requ
 - `rich` for the terminal application.
 
 All of them can be installed with `pip3 install`. You can use the `requirements.txt` file to install them all at once.
+
 '''
 pip3 install -r requirements.txt
 '''
