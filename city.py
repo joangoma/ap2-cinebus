@@ -27,17 +27,18 @@ FILE_CITY_NAME = "CITY_GRAPH"
 
 """
 COORDINATES SYSTEMS
-OSM -> 41, 2 latitud y longitud
+
+OSM -> 41, 2 lat - lon
 BUSES -> 41, 2 UTM
 haversine -> lat - lon
-STATICMAP -> 2, 41 (LON- LAT)
-ox.distance.nearest_nodes -> 2, 41 LON - LAT
+STATICMAP -> 2, 41 lon - lat
+ox.distance.nearest_nodes -> 2, 41 lon - lat
 """
 
 
 def delete_geometry(g: OsmnxGraph) -> None:
     '''Deletes the attribute geometry, as we are not interested
-    and takes a lot of space
+    and takes a lot of space.
     '''
     for u, v, key, geom in g.edges(data="geometry", keys=True):
         if geom is not None:
@@ -61,7 +62,7 @@ def get_osmnx_graph() -> OsmnxGraph:
 
         delete_geometry(g)
 
-        #there were self loops in g
+        # there were self loops in g
         g.remove_edges_from(nx.selfloop_edges(g))
 
         save_graph(g, FILE_OSMNX_NAME)
@@ -80,15 +81,10 @@ def load_graph(filename: str) -> OsmnxGraph | CityGraph:
     """Returns the graph stored in file filename"""
 
     path = os.getcwd() + "\\" + FILE_OSMNX_NAME
-    assert os.path.exists(path), f'Error: {filename} does not exist''
+    assert os.path.exists(path), f'Error: {filename} does not exist'
 
-    try:
-        pickle_in = open(filename, "rb")
-        return pickle.load(pickle_in)
-
-    except Exception:
-        print("Could not retrieve the graph")
-
+    pickle_in = open(filename, "rb")
+    return pickle.load(pickle_in)
 
 
 def join_stop_crosswalk(city, buses, cruilles) -> None:
@@ -117,7 +113,16 @@ def join_stop_crosswalk(city, buses, cruilles) -> None:
 
 
 def get_weight_buses(a, b, attr):
-    """Used to estimate the time taken to go from one bus stop to another."""
+    """Used to estimate the time taken to go from one bus stop to another.
+
+    Initially, the edges of type="Bus" have a weight=float('inf').
+    When calculating the shortest path between stops, this path can
+    go through:
+    - "Carrers", whose weight is different because is the distance
+    on foot
+    - "Buses", whose weight is float('inf') (not processed yet) or
+    a valid weight previously set that can be used
+    """
 
     if attr["type"] == "Carrer":
         return attr["weight"] * WALK_SPEED / BUS_SPEED
@@ -128,7 +133,7 @@ def get_weight_buses(a, b, attr):
 
 def group_substops(city: CityGraph) -> dict[str, list[str]]:
     """Returns a dictionary where the keys are the stops and the values
-    the substops of that stop which correspond to each line"""
+    are the substops of that stop which correspond to each line"""
 
     parades: dict[str, list[str]] = {}
     for node in city.nodes(data=True):
@@ -148,10 +153,10 @@ def add_weights_buses(city: CityGraph) -> None:
     stop1-lineA and stop1-lineB edge has weight = BUS_WAIT_TIME
     stop1-lineA and stop2-lineA edge has weight = distance
 
-    There is NO edge between stop1-lineA and stop2-lineB
-    (but one can travel between them with the route
+    There is NO edge between stop1-lineA and stop2-lineB,
+    although one can travel between them with the route:
     stop1-lineA -> stop1-lineB -> stop2-lineB or
-    stop1-lineA -> stop2-lineA -> stop2-lineB)
+    stop1-lineA -> stop2-lineA -> stop2-lineB
     """
 
     # add weight betwen stops of the same line
@@ -191,9 +196,18 @@ def build_city_graph(g1: OsmnxGraph, g2: BusesGraph) -> CityGraph:
     """If the citygraph is stored in FILE_CITY_NAME, it is loaded. Otherwise,
     g1 and g2 are merged to build a Citygraph and it is saved in FILE_CITY_NAME
 
-    Nodes' and edges' types are added, nodes: Cruilla/Parada, edges: Carrer/Bus
-    Coordinates of osmnxgraph nodes are swapped. We also ignore street count.
-    {'y': 41.4259553, 'x': 2.1866781, 'street_count': 3}) -> format anterior
+    ------------------------
+    Graph returned:
+    - Types of nodes and edges are added
+        nodes: "Cruilla" or "Parada"
+        edges: "Carrer" or "Bus"
+
+    - The nodes coordinates are in lat - lon format (the coordinates
+    of nodes from osmnxgraph are swapped)
+    - Every edge has a weight (the estimated time taken to travel it)
+    - The edges of type="Carrer" have the attribute name or None
+    - Each stop is connected to the closest crosswalk
+
     """
 
     path = os.getcwd() + "\\" + FILE_CITY_NAME
@@ -210,7 +224,7 @@ def build_city_graph(g1: OsmnxGraph, g2: BusesGraph) -> CityGraph:
     # nodes g2:
     city.add_nodes_from(g2.nodes(data=True), type="Parada")
 
-    # edges g1:
+    # edges g1 (weight is set):
     for edge in g1.edges(data=True):
 
         city.add_edge(edge[0], edge[1],
@@ -234,11 +248,8 @@ def build_city_graph(g1: OsmnxGraph, g2: BusesGraph) -> CityGraph:
 
 
 def find_path(ox_g: OsmnxGraph, g: CityGraph, src: Coord, dst: Coord) -> Path:
-    """Returns a tuple with the list of nodes ids of the shortest path from
-    src to dst and the minutes it takes.
-
-    shortest_path: If the source and target are both specified, returns
-     a single list of nodes in a shortest path from the source to the target.
+    """Returns a tuple whose first element is a list of nodes ids from the
+    shortest path from src to dst and the second element are the minutes taken.
     """
 
     # distance.nearest_nodes uses lon-lat coordinates, so we need to swap them
@@ -275,7 +286,7 @@ def plot_city(g: CityGraph, filename: str) -> None:
         elif node[1]["type"] == "Cruilla":
             color = "blue"
 
-        # we swap the components (staticmap works with lon-lat coordinates
+        # we swap the components (staticmap works with lon-lat coordinates)
         map.add_marker(CircleMarker([node[1]["coord"][1], node[1]["coord"][0]],
                                     color, 3)
                        )
@@ -298,7 +309,7 @@ def plot_city(g: CityGraph, filename: str) -> None:
 
 def get_colors_from_path(
         g: CityGraph, p: Path) -> dict[str, tuple[int, int, int]]:
-    """Returns a dictionary with the colors of each line. The colors
+    """Returns a dictionary with the colors of each bus line. The colors
     are set randomly."""
 
     # p[0] is a list
@@ -312,6 +323,13 @@ def get_colors_from_path(
 
 
 def plot_path(g: CityGraph, p: Path, filename: str, *args) -> None:
+    '''Saves the path p as an image with the city map in the
+    background in the file filename.
+
+    The sections of the path that are on foot are blue.
+    Each bus line is in a random color.
+    '''
+
     map = StaticMap(300, 300)
 
     colors_linies: dict[str, tuple[int, int, int]] = get_colors_from_path(g, p)
@@ -334,13 +352,15 @@ def plot_path(g: CityGraph, p: Path, filename: str, *args) -> None:
             coord_1 = (node["coord"][1], node["coord"][0])
             coord_2 = (prev_node["coord"][1], prev_node["coord"][0])
 
-            # if one of the nodes is a crosswalk -> walk -> blue
+            # if one of the nodes is a crosswalk the user has to walk
             if node["type"] == "Cruilla" or prev_node["type"] == "Cruilla":
                 color = "blue"
             else:
                 color = colors_linies[node["linia"]]
 
             map.add_line(Line([coord_1, coord_2], color, 2))
-
-    image = map.render()
-    image.save(filename)
+    try:
+        image = map.render()
+        image.save(filename)
+    except Exception:
+        print("Could not render or save the image")
