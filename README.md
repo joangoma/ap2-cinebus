@@ -35,7 +35,7 @@ Run the `demo.py` file, and then the necessary graphs will be created to calcula
 
 5. **Choose Film and Go to the Cinema**: Once users have found a film they want to watch, this option provides guidance on the best route to the closest cinema where the film is being screened. Users can select their preferred film inside this option, and follow the directions to reach the cinema conveniently.
 ![alt text](5.png)
-![alt text](cami.png)
+![alt text](6.png)
 
 
 
