@@ -51,7 +51,10 @@ def get_only_first_edge_and_del_geometry(g: OsmnxGraph) -> OsmnxGraph:
 
 
 def get_osmnx_graph() -> OsmnxGraph:
-    """Returns a graph of the streets of Barcelona."""
+    """Returns a graph of the streets of Barcelona. If it is in a file
+    in the current directory, it is loaded. Otherwise it is downloaded from
+    internet and saved in FILE_OSMNX_NAME
+    """
     path = os.getcwd() + "\\" + FILE_OSMNX_NAME
     if os.path.exists(path):
         return load_graph(FILE_OSMNX_NAME)
@@ -67,7 +70,7 @@ def get_osmnx_graph() -> OsmnxGraph:
 
 
 def save_graph(g: OsmnxGraph | CityGraph, filename: str) -> None:
-    """Saves graph g in file {filename}"""
+    """Saves graph g in file filename"""
 
     pickle_out = open(filename, "wb")
     pickle.dump(g, pickle_out)
@@ -209,7 +212,7 @@ def build_city_graph(g1: OsmnxGraph, g2: BusesGraph) -> CityGraph:
                           weight=haversine(city.nodes[edge[0]]["coord"],
                                            city.nodes[edge[1]]["coord"])
                           / WALK_SPEED * 60
-                          )
+            )
 
     # edges g2:
     city.add_edges_from(g2.edges(data=True), type="Bus", weight=float("inf"))
@@ -324,7 +327,7 @@ def plot_path(g: CityGraph, p: Path, filename: str, *args) -> None:
             coord_1 = (node["coord"][1], node["coord"][0])
             coord_2 = (prev_node["coord"][1], prev_node["coord"][0])
 
-            # if one of the nodes is a crosswalk -> walk -> color blau
+            # if one of the nodes is a crosswalk -> walk -> blue
             if node["type"] == "Cruilla" or prev_node["type"] == "Cruilla":
                 color = "blue"
             else:
