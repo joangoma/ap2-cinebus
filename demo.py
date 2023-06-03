@@ -108,8 +108,8 @@ def show_film_titles(
 def get_valid_duration() -> int:
     try:
         durada = int(
-            Prompt.ask("Introduce the maximimum duration of the film you \
-                        want to watch")
+            Prompt.ask("""Introduce the maximimum duration of the film you
+                        want to watch""")
         )
         return durada
     except:
@@ -287,8 +287,11 @@ def search_closest_cinema(
             plt.imshow(path_img)
             plt.show()
 
-    else:
+    elif key == "3":
         draw_menu()
+
+    else:
+        search_closest_cinema(billboard, osmx_g, city_g)
 
 
 def handle_input(key: str, billboard: Billboard, buses_g: BusesGraph,
@@ -321,8 +324,8 @@ def main() -> None:
         if key == "6":
             console.print(
                 Panel(
-                    "See you soon! 👋 \nPlease rate our app in: \
-                    https://newskit.social/blog/posts/cinebusfeedback",
+                    """See you soon! 👋 \nPlease rate our app in:
+                    https://newskit.social/blog/posts/cinebusfeedback""",
                     expand=False,
                 ),
             )
