@@ -18,7 +18,7 @@ The application uses the following libraries (see the exact version in the `requ
 All of them can be installed with `pip3 install`. You can use the `requirements.txt` file to install them all at once.
 
 ## Usage
-Run the `demo.py` file, and then the necessary graphs will be created to calculate the fastest way to get to the cinema. This may take a little while. Afterwards, the main menu with all the options will appear. 
+Run the `demo.py` file, and then the necessary graphs will be created to calculate the fastest way to get to the cinema. This may take a while. Afterwards, the main menu with all the options will appear. 
 
 ### Features of the demo
 
