@@ -167,7 +167,7 @@ def get_valid_option(valid_opt_l: int) -> int:
             return num_projection
 
 
-def find_valid_projections(billboard: Billboard, osmx_g: OsmnxGraph,
+def get_valid_projections(billboard: Billboard, osmx_g: OsmnxGraph,
         city_g: CityGraph) -> list[tuple[Projection, Path]] | None:
     """Returns a list of all the projections of a given film that you
     can arrive given a starting time"""
@@ -252,7 +252,7 @@ def search_closest_cinema(
     elif key == "2":
         valid_projections: list[
             tuple[Projection, Path]
-        ] | None = find_valid_projections(billboard, osmx_g, city_g)
+        ] | None = get_valid_projections(billboard, osmx_g, city_g)
 
         # Wrong title
         if valid_projections is None:
