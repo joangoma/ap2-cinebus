@@ -1,4 +1,4 @@
-# Cine Bus
+# Cine Bus 🚌 🎞️
 
 Find the movie that best suits your preferences and go there using the Barcelona bus! For now, it is only available in cinemas in Barcelona. We will expand to other areas of Catalonia soon.
 
