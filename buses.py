@@ -25,7 +25,7 @@ def get_data_from_url() -> dict[str, dict[str, 'T']]:
 
 def get_linies() -> list[dict[str, 'T']]:
     """Returns a list of bus lines"""
-    
+
     data: dict[str, dict[str, 'T']] = get_data_from_url()
     data = data[list(data.keys())[0]]
 
@@ -81,7 +81,7 @@ def get_buses_graph() -> BusesGraph:
 def show_buses(g: BusesGraph) -> None:
     """Shows the graph interactively using network.draw
 
-    note: some nodes are not connected because they belong to lines outside BCN
+    Note: some nodes are not connected because they belong to lines outside BCN
     """
 
     positions = nx.get_node_attributes(g, "coord")
@@ -91,7 +91,10 @@ def show_buses(g: BusesGraph) -> None:
 
 def plot_buses(g: BusesGraph, nom_fitxer: str) -> None:
     """Saves the graph as an image with the map of the city in the background
-    in the file nom_fitxer using staticmaps"""
+    in the file nom_fitxer using staticmaps
+
+    Note: coordinates are swapped because staticmap works with lon-lat.
+    """
 
     map = StaticMap(300, 300)
 
