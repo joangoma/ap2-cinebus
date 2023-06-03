@@ -31,7 +31,7 @@ def draw_menu():
         "2 Find film",
         "3 Show buses graph",
         "4 Show city graph",
-        "5 Go to the cinema!",
+        "5 Choose film and go to the cinema",
         "6 Exit",
     ]
     console.print()
@@ -170,6 +170,23 @@ def get_valid_time(question: str) -> tuple[int, int]:
         return get_valid_time(question)
 
 
+def get_valid_option(valid_opt_l: int) -> int:
+    """Asks the time they want to leave. If it's given in a correct format it's returned.
+    Otherwise the user is asked again"""
+    try:
+        num_projection = int(Prompt.ask("Choose the projection that you like!"))
+        if num_projection > valid_opt_l or num_projection <= 0:
+            Prompt.ask("Please, enter a valid option, press enter to continue")
+            return get_valid_option(valid_opt_l)
+        else:
+            return num_projection
+
+    except Exception as error:
+        console.print("An error ocurred: ", type(error).__name__)
+        Prompt.ask("Please, enter the correct format, press enter to continue")
+        return get_valid_option(valid_opt_l)
+
+
 def find_valid_projections(
     billboard: Billboard, osmx_g: OsmnxGraph, city_g: CityGraph
 ) -> list[tuple[Projection, Path]] | None:
@@ -224,11 +241,11 @@ def show_projections_path_info(
     """Shows in a table the possible projections given the user constraints and
     the time to get there"""
 
-    table = Table(show_header=True, header_style="bold magenta")
-    table.add_column("Num")
-    table.add_column("Cinema", justify="left")
+    table = Table(show_header=True)
+    table.add_column("Num", style="bright_magenta")
+    table.add_column("Cinema", justify="left", style="bright_cyan")
     table.add_column("Projection time")
-    table.add_column("Time to get there")
+    table.add_column("Time to get there", style="green")
 
     for i, (projection, path) in enumerate(valid_projections):
         table.add_row(
@@ -276,7 +293,7 @@ def search_closest_cinema(
 
             show_projections_path_info(valid_projections)
 
-            num_projection = int(Prompt.ask("Choose the projection that you like!"))
+            num_projection = get_valid_option(len(valid_projections))
 
             plot_path(city_g, valid_projections[num_projection - 1][1], "path.png")
 
@@ -333,4 +350,5 @@ def main() -> None:
 
 
 if __name__ == "__main__":
+    main()
     main()
