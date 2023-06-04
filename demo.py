@@ -19,7 +19,7 @@ console = Console()
 # Function to draw the menu
 def draw_menu():
     """Shows the main menu."""
-    
+
     console.clear()
     MARKDOWN = """
 # CINE BUS 🚌 🎥
@@ -124,7 +124,9 @@ def get_valid_duration() -> int:
 
 
 def get_valid_film_title(billboard: Billboard) -> str | None:
-    """Returns the title given by the user, in case it's from a film t'hat exists."""
+    """Returns the title given by the user, in case it's from a film 
+    that exists.
+    """
 
     film = Prompt.ask("Introduce the film you want to see")
 
@@ -156,8 +158,8 @@ def get_valid_coordinates() -> Coord:
 
 
 def get_valid_time(question: str) -> tuple[int, int]:
-    """Asks the time they want to leave. If it's given in a correct format it's returned.
-    Otherwise the user is asked again"""
+    """Asks the time they want to leave. If it's given in a correct format 
+    it's returned. Otherwise, the user is asked again"""
     
     leave_time = Prompt.ask("{0}, ex: 19:30".format(question))
     try:
@@ -171,9 +173,10 @@ def get_valid_time(question: str) -> tuple[int, int]:
 
 
 def get_valid_option(valid_opt_l: int) -> int:
-    """Asks the time they want to leave. If it's given in a correct format it's returned.
-    Otherwise the user is asked again"""
-    
+    """Asks the time they want to leave. If it's given in a correct format 
+    it's returned. Otherwise the user is asked again.
+    """
+
     try:
         num_projection = int(
                             Prompt.ask("Choose the projection that you like!")
@@ -334,7 +337,7 @@ def handle_input(key: str, billboard: Billboard, buses_g: BusesGraph,
 
 def main() -> None:
     """Driver Code."""
-    
+
     billboard: Billboard = read_billboard()
     buses_g: BusesGraph = get_buses_graph()
     osmx_g: OsmnxGraph = get_osmnx_graph()
