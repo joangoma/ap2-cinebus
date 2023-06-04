@@ -124,7 +124,7 @@ def get_valid_duration() -> int:
 
 
 def get_valid_film_title(billboard: Billboard) -> str | None:
-    """Returns the title given by the user, in case it's from a film 
+    """Returns the title given by the user, in case it's from a film
     that exists.
     """
 
@@ -158,9 +158,9 @@ def get_valid_coordinates() -> Coord:
 
 
 def get_valid_time(question: str) -> tuple[int, int]:
-    """Asks the time they want to leave. If it's given in a correct format 
+    """Asks the time they want to leave. If it's given in a correct format
     it's returned. Otherwise, the user is asked again"""
-    
+
     leave_time = Prompt.ask("{0}, ex: 19:30".format(question))
     try:
         hour, minute = leave_time.split(":")
@@ -173,7 +173,7 @@ def get_valid_time(question: str) -> tuple[int, int]:
 
 
 def get_valid_option(valid_opt_l: int) -> int:
-    """Asks the time they want to leave. If it's given in a correct format 
+    """Asks the time they want to leave. If it's given in a correct format
     it's returned. Otherwise the user is asked again.
     """
 
