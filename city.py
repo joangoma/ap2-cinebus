@@ -22,7 +22,7 @@ BUS_SPEED = 15  # km/h
 
 BUS_WAIT_TIME = 8.0  # minutes
 
-FILE_OSMNX_NAME = "OSMNX_GRAPH"
+FILE_OSMNX_NAME = "barcelona.grf"
 FILE_CITY_NAME = "CITY_GRAPH"
 
 """
