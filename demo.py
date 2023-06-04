@@ -118,7 +118,8 @@ def get_valid_duration() -> int:
                         want to watch""")
         )
         return durada
-    except:
+    except Exception as error:
+        console.print("An error ocurred: ", type(error).__name__)
         return get_valid_duration()
 
 
@@ -148,7 +149,8 @@ def get_valid_coordinates() -> Coord:
         lat, long = float(ubi[0]), float(ubi[1])
         return lat, long
 
-    except:
+    except Exception as error:
+        console.print("An error ocurred: ", type(error).__name__)
         Prompt.ask("Please, enter the correct format, press enter to continue")
         return get_valid_coordinates()
 
@@ -162,7 +164,8 @@ def get_valid_time(question: str) -> tuple[int, int]:
         hour, minute = leave_time.split(":")
         leaving_time: tuple[int, int] = (int(hour), int(minute))
         return leaving_time
-    except:
+    except Exception as error:
+        console.print("An error ocurred: ", type(error).__name__)
         Prompt.ask("Please, enter the correct format, press enter to continue")
         return get_valid_time(question)
 
@@ -181,8 +184,9 @@ def get_valid_option(valid_opt_l: int) -> int:
         else:
             return num_projection
 
-    except:
-        Prompt.ask("Please, enter a number. Press enter to continue")
+    except Exception as error:
+        console.print("An error ocurred: ", type(error).__name__)
+        Prompt.ask("Please, enter the correct format, press enter to continue")
         return get_valid_option(valid_opt_l)
 
 
