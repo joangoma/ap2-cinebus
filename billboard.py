@@ -4,6 +4,8 @@ from dataclasses import dataclass
 import requests
 from bs4 import BeautifulSoup
 
+# when running the code, finding the cinemas location was time consuming 
+# and some cinemas shown by the provider were outside Barcelona 
 CINEMAS_LOCATION: dict[str, tuple[float, float]] = {
     "Arenas Multicines 3D": (41.37645873603848, 2.1492467400941715),
     "Aribau Multicines": (41.38622954118975, 2.1625393383857823),
